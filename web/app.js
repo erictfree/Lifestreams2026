@@ -113,13 +113,13 @@ function renderStream(anim) {
   if (sv.dataset.view !== S.view) {          // switching views: rebuild from scratch
     sv.dataset.view = S.view;
     sv.className = 'stream v-' + S.view;
-    S.atlas?.destroy(); S.atlas = null;
+    S.gfx?.destroy(); S.gfx = null;
     sv.innerHTML = '';
     S.stackEls.clear();
   }
   if (S.view === 'stack') renderStack(anim);
   else if (S.view === 'river') renderRiver(anim);
-  else if (S.view === 'atlas') renderAtlas(anim);
+  else if (GFX[S.view]) renderGfx(anim);
   else renderFeed(anim);
   drawMini();
 }
@@ -177,30 +177,35 @@ function card(d, age = '') {
     <div class="m">${fmtTime(d.created)}${d.frozen ? '<br>🔒' : ''}</div></div>`;
 }
 
-// Atlas: the GPU view (web/atlas.js, loaded on first use).
-let atlasLoading = false;
-async function renderAtlas(anim) {
-  const sv = $('stream');
-  if (!$('atlas')) sv.innerHTML = '<div class="focus-label atlas-label"></div><div class="atlas" id="atlas"></div>';
-  sv.querySelector('.atlas-label').innerHTML = focusLabel();
-  if (S.atlas) return S.atlas.update(S.docs, { sel: S.sel, anim });
-  if (atlasLoading) return;
-  atlasLoading = true;
-  const el = $('atlas');
+// Canvas views drawn by their own module, loaded on first use: Atlas (WebGL) and Hall
+// (pseudo-3D Canvas 2D). Both expose the same small interface.
+const GFX = {
+  atlas: { module: './atlas.js', create: 'createAtlas', fail: 'The Atlas needs WebGL' },
+  hall: { module: './hall.js', create: 'createHall', fail: 'The Hall couldn’t start' },
+};
+let gfxLoading = null;
+async function renderGfx(anim) {
+  const view = S.view, sv = $('stream');
+  if (!$('gfx')) sv.innerHTML = `<div class="focus-label gfx-label"></div><div class="gfx ${view}" id="gfx"></div>`;
+  sv.querySelector('.gfx-label').innerHTML = focusLabel();
+  if (S.gfx) return S.gfx.update(S.docs, { sel: S.sel, anim });
+  if (gfxLoading === view) return;
+  gfxLoading = view;
+  const el = $('gfx');
   try {
-    const { createAtlas } = await import('./atlas.js');
-    if (S.view !== 'atlas' || $('atlas') !== el) return;
-    S.atlas = createAtlas(el, {
+    const mod = await import(GFX[view].module);
+    if (S.view !== view || $('gfx') !== el) return;
+    S.gfx = mod[GFX[view].create](el, {
       dark: isDark, now: liveNow,
       onHover: d => glance(d),
       onOpen: d => openDoc(d.id),
       onView: () => { if (!miniQueued) { miniQueued = true; setTimeout(() => { miniQueued = false; drawMini(); }, 120); } },
     });
-    S.atlas.update(S.docs, { sel: S.sel });
-    S.atlas.home();
+    S.gfx.update(S.docs, { sel: S.sel });
+    S.gfx.home();
   } catch (e) {
-    el.innerHTML = `<div class="empty">The Atlas needs WebGL: ${esc(e.message)}</div>`;
-  } finally { atlasLoading = false; }
+    el.innerHTML = `<div class="empty">${GFX[view].fail}: ${esc(e.message)}</div>`;
+  } finally { if (gfxLoading === view) gfxLoading = null; }
 }
 let miniQueued = false;
 function isDark() {
@@ -209,7 +214,7 @@ function isDark() {
 }
 
 function scrollToNow() {
-  if (S.view === 'atlas') { S.atlas?.home(); return; }
+  if (GFX[S.view]) { S.gfx?.home(); return; }
   if (S.view === 'stack') { S.atHead = true; S.cursor = null; renderStack(); drawMini(); return; }
   if (S.view === 'river') { const n = $('nowcol'), r = $('river'); if (n && r) r.scrollLeft = Math.max(0, n.offsetLeft - r.clientWidth * 0.6); drawMini(); return; }
   const n = $('nowline');
@@ -218,7 +223,7 @@ function scrollToNow() {
 
 // Bring a document into view in whichever view is showing.
 function reveal(id) {
-  if (S.view === 'atlas') { S.atlas?.reveal(id); return; }
+  if (GFX[S.view]) { S.gfx?.reveal(id); return; }
   if (S.view === 'stack') { if (S.docs.some(d => d.id === id)) { S.cursor = id; S.atHead = false; renderStack(); drawMini(); } return; }
   document.querySelector(`.card[data-id="${id}"]`)?.scrollIntoView({ block: 'center', inline: 'center' });
 }
@@ -374,7 +379,7 @@ function glance(d) {
 
 async function openDoc(id, { scroll } = {}) {
   S.sel = id; S.editing = false;
-  S.atlas?.select(id);
+  S.gfx?.select(id);
   document.querySelectorAll('.card.sel').forEach(c => c.classList.remove('sel'));
   const el = document.querySelector(`.card[data-id="${id}"]`);
   el?.classList.add('sel');
@@ -570,7 +575,7 @@ function drawMini() {
 // Times of the documents currently "in view", for the minimap bracket.
 function visibleTimes() {
   const byId = id => S.docs.find(d => d.id === id)?.created;
-  if (S.view === 'atlas') return S.atlas?.visibleTimes() || [];
+  if (GFX[S.view]) return S.gfx?.visibleTimes() || [];
   if (S.view === 'stack') {
     const asc = stackOrder(), i = asc.findIndex(d => d.id === S.cursor);
     return i < 0 ? [] : asc.slice(Math.max(0, i - 12), i + 1).map(d => d.created);
@@ -591,7 +596,7 @@ function scrubTo(clientY) {
   const { t0, span, H } = mapGeom;
   const f = 1 - (clientY - $('mini').getBoundingClientRect().top - 8) / (H - 16);
   const t = t0 + Math.min(1, Math.max(0, f)) * span;
-  if (S.view === 'atlas') return S.atlas?.scrubTo(t);
+  if (GFX[S.view]) return S.gfx?.scrubTo(t);
   if (S.view === 'stack') {
     const asc = stackOrder();
     let bi = 0;
@@ -692,8 +697,8 @@ document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); $('q').focus(); return; }
   if (e.target.closest('input, textarea, select')) return;
   if (e.key === 'n') { e.preventDefault(); compose(); }
-  if (S.view === 'atlas' && e.key !== 'Escape') return;   // the Atlas handles its own keys
-  if (['1', '2', '3', '4'].includes(e.key)) return setView(['feed', 'stack', 'river', 'atlas'][e.key - 1]);
+  if (['1', '2', '3', '4', '5'].includes(e.key)) return setView(['feed', 'stack', 'river', 'atlas', 'hall'][e.key - 1]);
+  if (GFX[S.view] && e.key !== 'Escape') return;   // canvas views handle their own keys
   if (S.view === 'stack' && ['ArrowUp', 'ArrowDown', 'j', 'k', 'Enter'].includes(e.key)) {
     e.preventDefault();
     if (e.key === 'Enter') return S.cursor && openDoc(S.cursor);
@@ -705,7 +710,7 @@ document.addEventListener('keydown', e => {
     const next = cards[Math.max(0, Math.min(cards.length - 1, i < 0 ? cards.findIndex(c => !c.classList.contains('future')) : i + (e.key === 'j' ? 1 : -1)))];
     if (next) openDoc(next.dataset.id, { scroll: true });
   }
-  if (e.key === 'Escape') { S.sel = null; S.editing = false; placeholder(); S.atlas?.select(null); $('pane').classList.remove('show'); }
+  if (e.key === 'Escape') { S.sel = null; S.editing = false; placeholder(); S.gfx?.select(null); $('pane').classList.remove('show'); }
 });
 
 setInterval(() => { $('clock').textContent = new Date(liveNow()).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }, 1000);

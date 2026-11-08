@@ -22,7 +22,7 @@ npm start
 
 Then open http://localhost:4747.
 
-Three views of the same stream, switched in the header or with keys `1` `2` `3`:
+Five views of the same stream, switched in the header or with keys `1`–`5`:
 
 - **Feed**: vertical, newest first, with future documents above the Now line.
 - **Stack**: the 1997 interface rebuilt with CSS 3D. Pages recede into the past, unread
@@ -37,6 +37,12 @@ Three views of the same stream, switched in the header or with keys `1` `2` `3`:
   waveforms decoded from the file, spreadsheet grids, calendar invites, mail, saved
   pages, and syntax-colored code. Detail sharpens as you get closer. Click a card to fly
   to it and open it. The legend filters by format, and `0` returns to now.
+- **Hall**: a pseudo-3D gallery corridor through time, drawn with plain Canvas 2D (no
+  WebGL). You stand at Now looking down the hall into the past, with documents hung on
+  both walls as fully rendered thumbnails. The walls are texture-mapped the old way, one
+  thin vertical strip at a time, with distance fog and a glossy floor reflection. Days and
+  months are painted on the floor, and the future lies behind you past the NOW gate.
+  Scroll, drag, or press ↑/↓ to walk; click a document to walk up to it and open it.
 
 ## Real files, any format
 
@@ -103,5 +109,5 @@ documents arrive (and wake agents) when their time comes.
 - `server/`: `store.mjs` (files ↔ memory), `query.mjs` (find language), `harness.mjs`
   (tools, ask, summarize, agents, clock), `llm.mjs` (Anthropic SDK), `main.mjs` (HTTP + SSE)
 - `web/`: the browser client. `formats.js` holds the per-format viewers and thumbnails, and
-  `atlas.js` is the GPU view.
+  `atlas.js` is the GPU view, and `hall.js` is the pseudo-3D corridor.
 - `prototype/index.html`: the original static mockup
