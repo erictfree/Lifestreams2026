@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lifestreams</title>
 <link rel="stylesheet" href="app.css">
+<!-- apply a saved light/dark choice before first paint, so there is no flash -->
+<script>try { const t = localStorage.getItem('ls:theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
 <!-- three.js addons import the bare specifier "three"; map it to the same copy Atlas uses -->
 <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/threeaddons/" } }</script>
 </head>
@@ -34,6 +36,7 @@
       <option value="feed">Feed</option><option value="stack">Stack</option><option value="river">River</option><option value="atlas">Atlas</option>
       <option value="hall">Hall</option><option value="vista">Vista</option><option value="classic">Classic</option><option value="modern">Modern</option><option value="calendar">Calendar</option>
     </select>
+    <button class="op small theme-btn" id="themeBtn" aria-label="Theme"></button>
     <span class="pill" id="llm" title="">model</span>
     <span class="clock" id="clock"></span>
   </header>

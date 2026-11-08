@@ -215,6 +215,25 @@ async function renderGfx(anim) {
   } finally { if (gfxLoading === view) gfxLoading = null; }
 }
 let miniQueued = false;
+// Light / dark: follow the system (auto) or pin one. Canvas views bake colors into their
+// textures, so switching rebuilds the current view.
+const THEMES = { auto: ['◐', 'Theme: automatic (follows your system)'], light: ['☀', 'Theme: light'], dark: ['☾', 'Theme: dark'] };
+function applyTheme(t, rebuild = true) {
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  else { delete document.documentElement.dataset.theme; t = 'auto'; }
+  localSet('theme', t);
+  $('themeBtn').textContent = THEMES[t][0];
+  $('themeBtn').title = THEMES[t][1] + ' — click to change';
+  if (!rebuild) return;
+  $('stream').dataset.view = '';            // force the view to rebuild with the new colors
+  renderStream();
+  if (GFX[S.view]) setTimeout(() => S.gfx?.home(), 50);
+}
+$('themeBtn').onclick = () => {
+  const order = ['auto', 'light', 'dark'], cur = localGet('theme') || 'auto';
+  applyTheme(order[(order.indexOf(cur) + 1) % 3]);
+};
+
 function isDark() {
   const t = document.documentElement.dataset.theme;
   return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
@@ -794,6 +813,7 @@ function localSet(k, v) { try { localStorage.setItem('ls:' + k, v); } catch {} }
 
 // ---------- start ----------
 placeholder();
+applyTheme(localGet('theme') || 'auto', false);
 document.querySelectorAll('#views button').forEach(b => b.setAttribute('aria-selected', b.dataset.view === S.view));
 $('viewSelect').value = S.view;
 await loadStatus();
