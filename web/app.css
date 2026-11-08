@@ -211,11 +211,12 @@ footer .status { margin-left: auto; color: var(--muted); font-size: 12px; }
 }
 
 /* ---------- atlas view: the GPU wall ---------- */
-.stream.v-atlas, .stream.v-hall, .stream.v-vista { overflow: hidden; padding: 0; position: relative; }
+.stream.v-atlas, .stream.v-hall, .stream.v-vista, .stream.v-classic, .stream.v-calendar { overflow: hidden; padding: 0; position: relative; }
 .gfx-label, .atlas-label { position: absolute; top: 0; left: 0; right: 0; padding: 12px 24px; z-index: 5; pointer-events: none; background: linear-gradient(var(--bg) 40%, transparent); }
 .gfx { position: absolute; inset: 0; cursor: grab; touch-action: none; }
 .gfx.hall { cursor: ns-resize; }
 .gfx.vista { cursor: grab; }
+.gfx.classic, .gfx.calendar { cursor: default; }
 .gfx.atlas:active { cursor: grabbing; }
 .atlas-gl { display: block; width: 100%; height: 100%; }
 .atlas-hud { position: absolute; inset: 0; pointer-events: none; font-size: 12px; }
@@ -297,3 +298,94 @@ body.dropping::after { content: 'Drop to add to your lifestream — any format';
 .v-help { bottom: 12px; left: 50%; transform: translateX(-50%); color: var(--muted); font-size: 11px; white-space: nowrap; background: color-mix(in srgb, var(--panel) 80%, transparent); backdrop-filter: blur(8px); padding: 3px 10px; border-radius: 8px; border: 1px solid var(--line); }
 .v-help kbd { border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
 @media (max-width: 860px) { .v-help { display: none; } .v-when { top: 62px; left: 16px; } .v-day { font-size: 16px; } .v-buttons { top: auto; bottom: 12px; right: 12px; } .views button { padding: 5px 5px; font-size: 11px; } }
+
+/* ---------- view switcher: a dropdown when the header gets narrow ---------- */
+.view-select { display: none; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 8px; padding: 5px 8px; font-size: 12px; font-weight: 600; }
+@media (max-width: 1240px) { .views { display: none; } .view-select { display: inline-block; } }
+
+/* ---------- classic view: the 1997 diagonal stack ---------- */
+.gfx.classic .cl-stage { position: absolute; inset: 0; overflow: hidden; }
+.cl-page { position: absolute; left: 0; top: 0; background: var(--panel); border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent); border-radius: 3px; overflow: hidden; cursor: pointer;
+  box-shadow: 1px 1px 0 rgba(0,0,0,.05), 3px 4px 10px rgba(0,0,0,.08); transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s, border-color .15s; will-change: transform; }
+.cl-page.unread { border: 2px solid var(--unread); }
+.cl-page.writable { border-width: 2px; border-color: var(--ink); }
+.cl-page.unread.writable { border-color: var(--unread); border-width: 3px; }
+.cl-page.future { border-style: dashed; border-color: #0090ff; }
+.cl-page.hover { border-color: var(--accent); }
+.cl-page.sel { outline: 3px solid var(--accent); outline-offset: 1px; }
+.cl-page.far { opacity: .92; }
+.cl-page.cl-new { animation: slide .5s ease-out; }
+.cl-head { display: flex; gap: 6px; align-items: baseline; height: 15px; padding: 1px 6px 0 7px; font-size: 10px; line-height: 13px; border-bottom: 1px solid var(--line); border-left: 3px solid var(--c); background: var(--panel); }
+.cl-head b { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.cl-head span { flex: none; color: var(--muted); font-family: var(--mono); font-size: 9px; }
+.cl-body { position: absolute; inset: 15px 0 0 0; overflow: hidden; }
+.cl-canvas { width: 100%; height: auto; display: block; margin-top: -26px; }
+.cl-fallback { padding: 8px 9px; font-size: 11px; line-height: 1.35; }
+.cl-fallback b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-fallback span { color: var(--muted); }
+.cl-day { position: absolute; left: 0; top: 0; font: 700 11px var(--mono); color: var(--ink); white-space: nowrap; pointer-events: none; text-shadow: 0 0 6px var(--bg), 0 0 2px var(--bg); }
+.cl-day.fut { color: #0090ff; }
+.cl-glance { position: absolute; left: 0; top: 0; z-index: 200; border: 1px solid var(--ink); border-radius: 4px; overflow: hidden; background: var(--panel); box-shadow: 0 18px 50px rgba(0,0,0,.25); pointer-events: none; transition: transform .18s; }
+.cl-glance canvas { width: 100%; height: 100%; display: block; }
+.cl-info { position: absolute; left: 32px; bottom: 112px; z-index: 150; font-family: Georgia, "Times New Roman", serif; pointer-events: none; text-shadow: 0 0 8px var(--bg); }
+.cl-stream { font-size: 22px; }
+.cl-sub, .cl-count { font-size: 15px; font-weight: 700; text-align: right; }
+.cl-slider { position: absolute; left: 24px; bottom: 18px; width: min(320px, 40%); z-index: 150; font: 12px var(--mono); }
+.cl-range { margin-bottom: 4px; }
+.cl-track { display: flex; align-items: stretch; height: 24px; border: 1px solid color-mix(in srgb, var(--ink) 40%, transparent); background: var(--bg); }
+.cl-arrow { border: 0; background: color-mix(in srgb, var(--ink) 10%, var(--panel)); width: 26px; cursor: pointer; font-size: 10px; }
+.cl-rail { position: relative; flex: 1; cursor: pointer; background: repeating-linear-gradient(90deg, transparent 0 9px, color-mix(in srgb, var(--ink) 6%, transparent) 9px 10px); }
+.cl-thumb { position: absolute; top: 2px; bottom: 2px; background: color-mix(in srgb, var(--accent) 55%, var(--panel)); border: 1px solid var(--accent); border-radius: 2px; transition: left .2s, width .2s; }
+.cl-ends { display: flex; justify-content: space-between; margin-top: 4px; color: var(--muted); }
+@media (max-width: 860px) { .cl-head span { display: none; } .cl-info { left: 14px; bottom: 100px; } .cl-stream { font-size: 17px; } .cl-slider { left: 12px; width: calc(100% - 24px); bottom: 12px; } }
+
+/* ---------- calendar view ---------- */
+.cal-wrap { position: absolute; inset: 0; top: 34px; display: grid; grid-template-columns: minmax(0, 1fr) 250px; }
+.cal-main { display: flex; flex-direction: column; min-height: 0; padding: 4px 16px 14px 24px; }
+.cal-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.cal-title { font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
+.cal-title span { color: var(--muted); font-weight: 500; }
+.cal-nav { display: flex; gap: 4px; }
+.cal-dow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; padding: 0 0 4px; }
+.cal-dow div { padding-left: 6px; }
+.cal-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.cal-day { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 4px 4px 2px; overflow: hidden; display: flex; flex-direction: column; gap: 2px; cursor: pointer; min-width: 0; background: var(--panel); }
+.cal-day:hover { background: var(--hover); }
+.cal-day.out { background: var(--bg); }
+.cal-day.out .cal-num span { color: var(--muted); opacity: .6; }
+.cal-day.future { background: color-mix(in srgb, var(--future-soft) 45%, var(--panel)); }
+.cal-day.picked { box-shadow: inset 0 0 0 2px var(--accent); }
+.cal-num { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 600; padding: 0 2px; }
+.cal-day.today .cal-num span { background: var(--accent); color: #fff; border-radius: 99px; padding: 1px 7px; }
+.cal-density { width: 26px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--accent) calc(var(--n) * 100%), var(--line)); }
+.cal-chip { display: flex; gap: 5px; align-items: center; border: 0; background: none; padding: 1px 4px; border-radius: 4px; font-size: 11px; text-align: left; cursor: pointer; min-width: 0; color: var(--ink); }
+.cal-chip:hover { background: color-mix(in srgb, var(--c) 14%, transparent); }
+.cal-chip i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+.cal-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-chip.em { background: color-mix(in srgb, var(--c) 16%, transparent); border-left: 3px solid var(--c); }
+.cal-chip.em b { flex: none; font-weight: 600; color: var(--c); }
+.cal-chip.unread span { font-weight: 700; }
+.cal-chip.sel { outline: 2px solid var(--accent); }
+.cal-more { font-size: 10px; color: var(--muted); padding: 0 4px; }
+.cal-day { container-type: inline-size; }
+@container (max-width: 120px) { .cal-chip.em b { display: none; } }   /* narrow cells: title over time */
+.cal-agenda { border-left: 1px solid var(--line); overflow: auto; padding: 4px 12px 16px; }
+.ag-head { position: sticky; top: 0; background: var(--bg); padding: 6px 0 8px; }
+.ag-date { font-weight: 700; font-size: 15px; }
+.ag-new { margin-top: 6px; }
+.ag-list { display: flex; flex-direction: column; gap: 2px; }
+.ag-item { display: grid; grid-template-columns: 58px 8px minmax(0, 1fr); gap: 6px; align-items: start; text-align: left; border: 0; background: none; padding: 6px 4px; border-radius: 6px; cursor: pointer; color: var(--ink); }
+.ag-item:hover { background: var(--hover); }
+.ag-item.sel { background: var(--accent-soft); }
+.ag-time { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; padding-top: 1px; }
+.ag-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; }
+.ag-body b { display: block; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ag-body small { color: var(--muted); font-size: 11px; }
+@media (max-width: 860px) {
+  .cal-wrap { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) 38%; top: 54px; }
+  .cal-main { padding: 4px 8px 8px; }
+  .cal-agenda { border-left: 0; border-top: 1px solid var(--line); }
+  .cal-chip span { display: none; }
+  .cal-chip { padding: 0 2px; }
+  .cal-chip.em b { font-size: 9px; }
+}

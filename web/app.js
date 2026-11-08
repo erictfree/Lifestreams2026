@@ -133,6 +133,7 @@ function focusLabel() {
 function setView(v) {
   S.view = v; localSet('view', v);
   document.querySelectorAll('#views button').forEach(b => b.setAttribute('aria-selected', b.dataset.view === v));
+  $('viewSelect').value = v;
   S.atHead = true;
   renderStream();
   scrollToNow();
@@ -183,6 +184,8 @@ const GFX = {
   atlas: { module: './atlas.js', create: 'createAtlas', fail: 'The Atlas needs WebGL' },
   hall: { module: './hall.js', create: 'createHall', fail: 'The Hall couldn’t start' },
   vista: { module: './vista.js', create: 'createVista', fail: 'The Vista couldn’t start' },
+  classic: { module: './classic.js', create: 'createClassic', fail: 'The Classic view couldn’t start' },
+  calendar: { module: './calendar.js', create: 'createCalendar', fail: 'The Calendar couldn’t start' },
 };
 let gfxLoading = null;
 async function renderGfx(anim) {
@@ -200,6 +203,8 @@ async function renderGfx(anim) {
       dark: isDark, now: liveNow,
       onHover: d => glance(d),
       onOpen: d => openDoc(d.id),
+      onNewAt: t => compose({ type: 'reminder', at: t }),
+      label: () => ({ stream: S.status?.root.split('/').pop() || 'me', sub: S.chain.length ? S.chain.map(s => s.label).join(' › ') : 'Main stream' }),
       onView: () => { if (!miniQueued) { miniQueued = true; setTimeout(() => { miniQueued = false; drawMini(); }, 120); } },
     });
     S.gfx.update(S.docs, { sel: S.sel });
@@ -459,6 +464,7 @@ function compose(defaults = {}) {
       <label>…or add files — any format (you can also drop files anywhere)<input type="file" name="files" multiple></label>
       <div class="tools"><button class="op primary small">Add to stream</button><button type="button" class="op small" id="cancel">Cancel</button></div>
     </form>`;
+  if (defaults.at) $('cmp').at.value = localInput(new Date(defaults.at));
   $('cancel').onclick = () => { S.editing = false; placeholder(); };
   $('cmp').type.onchange = e => { if (e.target.value === 'reminder' && !$('cmp').at.value) { const t = new Date(liveNow() + 864e5); t.setHours(9, 0, 0, 0); $('cmp').at.value = localInput(t); } };
   $('cmp').onsubmit = async e => {
@@ -692,13 +698,15 @@ $('opSumMore').onclick = e => {
   setTimeout(() => addEventListener('click', close, true));
 };
 $('views').onclick = e => { const v = e.target.dataset.view; if (v) setView(v); };
+$('viewSelect').onchange = e => setView(e.target.value);
 $('menuBtn').onclick = () => $('rail').classList.toggle('show');
 
 document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); $('q').focus(); return; }
   if (e.target.closest('input, textarea, select')) return;
   if (e.key === 'n') { e.preventDefault(); compose(); }
-  if (['1', '2', '3', '4', '5', '6'].includes(e.key)) return setView(['feed', 'stack', 'river', 'atlas', 'hall', 'vista'][e.key - 1]);
+  const VIEWS = ['feed', 'stack', 'river', 'atlas', 'hall', 'vista', 'classic', 'calendar'];
+  if (/^[1-8]$/.test(e.key)) return setView(VIEWS[e.key - 1]);
   if (GFX[S.view] && e.key !== 'Escape') return;   // canvas views handle their own keys
   if (S.view === 'stack' && ['ArrowUp', 'ArrowDown', 'j', 'k', 'Enter'].includes(e.key)) {
     e.preventDefault();
@@ -786,6 +794,7 @@ function localSet(k, v) { try { localStorage.setItem('ls:' + k, v); } catch {} }
 // ---------- start ----------
 placeholder();
 document.querySelectorAll('#views button').forEach(b => b.setAttribute('aria-selected', b.dataset.view === S.view));
+$('viewSelect').value = S.view;
 await loadStatus();
 await loadAgents();
 await loadSubs();

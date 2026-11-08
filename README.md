@@ -22,7 +22,7 @@ npm start
 
 Then open http://localhost:4747.
 
-Six views of the same stream, switched in the header or with keys `1`–`6`:
+Eight views of the same stream, switched in the header (a dropdown on narrow screens) or with keys `1`–`8`:
 
 - **Feed**: vertical, newest first, with future documents above the Now line.
 - **Stack**: the 1997 interface rebuilt with CSS 3D. Pages recede into the past, unread
@@ -50,6 +50,16 @@ Six views of the same stream, switched in the header or with keys `1`–`6`:
   in plain Canvas 2D, so you can read them and they don't hide the rows behind. Scroll or
   press ↑/↓ to glide from day to day and ←/→ to move along a day. Future days fade in
   front of the Now line.
+- **Classic**: the 1997 X Windows interface, kept faithful. A diagonal stack of 40 pages
+  runs corner to corner, newest at the bottom right, and each page's header line peeks out.
+  Hovering a page pops a large rendered copy out of the stack (the original "glance"). The
+  stream name and count sit above a time slider, with the visible slice's dates on top and
+  the whole stream's range below. Unread pages have red borders and writable ones thick
+  borders. Scroll, use the slider, or press ↑/↓ to move through time.
+- **Calendar**: a traditional month grid over the same documents. Mail and notes fill the
+  past; reminders, events, and agent wake-ups fill the future, shown with their times.
+  Pick a day to see its agenda. Double-click a future day, or use "+ Reminder", to
+  schedule something: in Lifestreams a calendar entry is just a future document.
 
 ## Real files, any format
 
@@ -116,5 +126,5 @@ documents arrive (and wake agents) when their time comes.
 - `server/`: `store.mjs` (files ↔ memory), `query.mjs` (find language), `harness.mjs`
   (tools, ask, summarize, agents, clock), `llm.mjs` (Anthropic SDK), `main.mjs` (HTTP + SSE)
 - `web/`: the browser client. `formats.js` holds the per-format viewers and thumbnails, and
-  `atlas.js` is the GPU view, `hall.js` is the pseudo-3D corridor, and `vista.js` is the diagonal view.
+  `atlas.js` is the GPU view, `hall.js` is the pseudo-3D corridor, `vista.js` is the diagonal view, `classic.js` is the 1997 stack, and `calendar.js` is the month grid.
 - `prototype/index.html`: the original static mockup
