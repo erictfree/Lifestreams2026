@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lifestreams 2026</title>
+<style>
+:root {
+  --bg: #f6f5f2; --panel: #ffffff; --ink: #1d1c1a; --muted: #77736b; --line: #e3e0d9;
+  --accent: #c2410c; --accent-soft: #fde7da; --agent: #6d28d9; --agent-soft: #f1eafe;
+  --future: #0e7490; --future-soft: #e0f2f6; --unread: #dc2626; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141412; --panel: #1d1c1a; --ink: #ecebe7; --muted: #9a958b; --line: #2e2c28;
+    --accent: #fb923c; --accent-soft: #3a2316; --agent: #a78bfa; --agent-soft: #261d3b;
+    --future: #67c6da; --future-soft: #112d33; --unread: #f87171; --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141412; --panel: #1d1c1a; --ink: #ecebe7; --muted: #9a958b; --line: #2e2c28;
+  --accent: #fb923c; --accent-soft: #3a2316; --agent: #a78bfa; --agent-soft: #261d3b;
+  --future: #67c6da; --future-soft: #112d33; --unread: #f87171; --shadow: none;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.45 ui-sans-serif, -apple-system, "Segoe UI", sans-serif; }
+button { font: inherit; color: inherit; }
+
+.app { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
+header { display: flex; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.logo { font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
+.logo span { color: var(--accent); }
+.find { flex: 1; display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 0 10px; }
+.find input { flex: 1; border: 0; background: transparent; color: var(--ink); font: inherit; padding: 9px 0; outline: none; }
+.find kbd, .hint { font-size: 11px; color: var(--muted); }
+.clock { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+
+main { display: grid; grid-template-columns: 220px 1fr 340px 60px; min-height: 0; }
+.rail { border-right: 1px solid var(--line); overflow: auto; padding: 12px 8px; }
+.rail h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 14px 8px 6px; }
+.sub { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; border: 0; background: none; padding: 5px 8px; border-radius: 6px; cursor: pointer; }
+.sub:hover { background: var(--line); }
+.sub.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.sub .q { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub .n { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sub .ag { color: var(--agent); font-size: 11px; }
+.agent-row { padding: 5px 8px; font-size: 13px; display: flex; gap: 6px; }
+.agent-row small { color: var(--muted); margin-left: auto; }
+
+.stream { overflow: auto; position: relative; padding: 8px 24px 80px; scroll-behavior: smooth; }
+.focus-label { position: sticky; top: 0; z-index: 3; background: linear-gradient(var(--bg) 70%, transparent); padding: 8px 0 12px; color: var(--muted); font-size: 12px; }
+.focus-label b { color: var(--ink); }
+.day { font-size: 12px; color: var(--muted); margin: 16px 0 6px; font-weight: 600; }
+.card { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: start; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; margin: 6px 0; cursor: pointer; box-shadow: var(--shadow); transition: transform .15s, opacity .2s; transform-origin: top center; }
+.card:hover { border-color: var(--muted); }
+.card.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+.card.writable { border-width: 2px; }
+.card.agent { background: var(--agent-soft); border-color: color-mix(in srgb, var(--agent) 35%, transparent); }
+.card.future { background: var(--future-soft); border-style: dashed; border-color: color-mix(in srgb, var(--future) 50%, transparent); opacity: .85; }
+.card .ic { font-size: 15px; line-height: 1.3; text-align: center; }
+.card .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card .s { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card .m { font-size: 11px; color: var(--muted); text-align: right; white-space: nowrap; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--unread); margin-left: 4px; }
+.badge { font-size: 10px; color: var(--agent); font-weight: 700; }
+.past-old { transform: scale(.985); }
+.past-older { transform: scale(.97); opacity: .9; }
+
+.now { position: relative; margin: 18px 0; height: 0; border-top: 2px solid var(--accent); }
+.now span { position: absolute; left: 50%; top: -11px; transform: translateX(-50%); background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 99px; letter-spacing: .04em; }
+.zone { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--future); text-align: center; margin: 8px 0; }
+
+@keyframes drop { from { transform: translateY(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes slide { from { transform: translateX(-60px); opacity: 0; } to { transform: none; opacity: 1; } }
+.card.drop { animation: drop .45s ease-out; }
+.card.slide { animation: slide .5s ease-out; }
+
+.pane { border-left: 1px solid var(--line); overflow: auto; padding: 16px; background: var(--panel); }
+.pane .empty { color: var(--muted); margin-top: 40px; text-align: center; }
+.pane h2 { font-size: 17px; margin: 4px 0 2px; }
+.pane .attrs { font: 12px ui-monospace, Menlo, monospace; color: var(--muted); background: var(--bg); border-radius: 8px; padding: 8px 10px; margin: 10px 0; white-space: pre-wrap; }
+.pane .body { white-space: pre-wrap; }
+.pane h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 16px 0 6px; }
+.pane a { color: var(--accent); cursor: pointer; text-decoration: none; }
+.pane a:hover { text-decoration: underline; }
+
+.mini { border-left: 1px solid var(--line); position: relative; cursor: ns-resize; user-select: none; }
+.mini canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+footer { display: flex; gap: 8px; align-items: center; padding: 8px 16px; border-top: 1px solid var(--line); background: var(--panel); }
+.op { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 6px 14px; cursor: pointer; font-weight: 600; }
+.op:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.op:disabled { opacity: .4; cursor: default; }
+.op.sum { background: var(--accent); border-color: var(--accent); color: #fff; }
+.op.sum:hover { color: #fff; filter: brightness(1.08); }
+footer .hint { margin-left: auto; }
+
+@media (max-width: 900px) {
+  main { grid-template-columns: 1fr 44px; }
+  .rail, .pane { display: none; }
+  .pane.show { display: block; position: fixed; inset: 56px 0 52px 0; z-index: 10; }
+  .stream { padding: 8px 16px 80px; }
+  .hint, .find kbd { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">Life<span>streams</span></div>
+    <label class="find">⌕
+      <input id="q" placeholder='find or ask…   e.g.  type:email from:alice   ·   ~"renovation"   ·   what did the electrician quote?' autocomplete="off">
+      <kbd>⌘K</kbd>
+    </label>
+    <div class="clock" id="clock"></div>
+  </header>
+  <main>
+    <nav class="rail">
+      <h3>Substreams</h3>
+      <div id="subs"></div>
+      <h3>Agents ✦</h3>
+      <div id="agents"></div>
+    </nav>
+    <section class="stream" id="stream"></section>
+    <aside class="pane" id="pane"><div class="empty">Hover to glance · click to open</div></aside>
+    <div class="mini" id="mini" title="Drag to travel through time"><canvas id="cv"></canvas></div>
+  </main>
+  <footer>
+    <button class="op" id="opNew">New</button>
+    <button class="op" id="opClone" disabled>Clone</button>
+    <button class="op" id="opXfer" disabled>Transfer</button>
+    <button class="op sum" id="opSum">Summarize</button>
+    <span class="hint">Mockup · fake data · nothing leaves this page</span>
+  </footer>
+</div>
+
+<script>
+// ---------- fake lifestream ----------
+const NOW = new Date();
+let seed = 7;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const pick = a => a[Math.floor(rnd() * a.length)];
+const isFut = d => d.created > new Date();
+const ICON = { email: '✉', note: '📝', turn: '💬', file: '📄', bookmark: '🔖', summary: '✦', reminder: '⏰', expense: '🧾', photo: '🖼' };
+
+const TEMPL = [
+  ['email', 'alice@example.com', 'Re: cabinet samples', 'Two finishes to pick from before Friday — oak or the painted white.', ['renovation']],
+  ['email', 'bob@contractor.co', 'Electrical quote', 'Panel upgrade plus kitchen circuits comes to $3,400, two days of work.', ['renovation', 'contractor']],
+  ['email', 'permits@town.gov', 'Permit application received', 'Your building permit #22-1187 is under review.', ['renovation', 'permit']],
+  ['email', 'elisabeth', 'dinner Saturday?', 'The Hendersons can do 7. Want to book the place on Chapel?', ['family']],
+  ['email', 'editor@publisher.com', 'Chapter 4 edits', 'Comments attached; mostly the agents section.', ['book']],
+  ['note', 'me', 'Ideas: stream as harness', 'Conversation = documents. Memory = the stream. Compaction = summarize.', ['lifestreams']],
+  ['note', 'me', 'Toaster oven research', 'Breville vs. Cuisinart — the Breville has the better convection.', ['shopping']],
+  ['file', 'me', 'Quote_electric.pdf', 'Scanned quote from Bob, 2 pages.', ['renovation', 'contractor']],
+  ['file', 'me', 'chapter4-draft.md', 'Draft of chapter 4, ~6,200 words.', ['book']],
+  ['bookmark', 'me', 'Linda coordination language', 'cs.yale.edu — tuple spaces, in/out/rd/eval.', ['lifestreams']],
+  ['bookmark', 'me', 'Kitchen layout planner', 'Interactive planner, saved for the island measurements.', ['renovation']],
+  ['expense', 'agent:inbox-triage', 'Receipt — Home Depot $212.40', 'Extracted from email receipt. Category: renovation.', ['renovation', 'expense']],
+  ['photo', 'me', 'IMG_4471.heic', 'Kitchen wall opened up — knob-and-tube wiring visible.', ['renovation']],
+  ['turn', 'me', 'you: when is the permit due?', 'when is the permit due?', ['renovation']],
+  ['turn', 'claude', 'claude: Permit review closes Nov 14', 'The town said review takes ~2 weeks from Oct 31, so around Nov 14. (→ permit email)', ['renovation']],
+];
+
+let docs = [];
+let idn = 0;
+function mk(type, author, title, body, tags, created, extra = {}) {
+  const d = { id: created.toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z-' + (idn++).toString(36).padStart(3, '0'),
+    type, author, title, body, tags, created, frozen: created < new Date(NOW - 14 * 864e5), unread: false, derived_from: [], ...extra };
+  docs.push(d); return d;
+}
+for (let i = 0; i < 420; i++) {
+  const ageDays = Math.pow(rnd(), 1.9) * 540; // denser near now
+  const t = pick(TEMPL);
+  const c = new Date(NOW - ageDays * 864e5 - rnd() * 864e5 * .2);
+  mk(t[0], t[1], t[2], t[3], t[4], c, { unread: ageDays < 2 && rnd() < .5 && t[1] !== 'me' });
+}
+// a few agent outputs and summaries in the recent past
+mk('summary', 'agent:weekly-review', 'Weekly review — Oct 27–Nov 2', '14 emails, 3 need replies. Renovation: permit filed, electrical quoted. Book: ch.4 edits pending.', ['review'], new Date(NOW - 5 * 864e5));
+mk('reminder', 'agent:inbox-triage', 'Reply to editor about ch.4', 'Added because the editor asked for a response this week.', ['book'], new Date(NOW - 3 * 3600e3));
+// future docs
+const day = n => { const d = new Date(NOW); d.setDate(d.getDate() + n); d.setHours(9 + (n % 5), 0, 0, 0); return d; };
+mk('reminder', 'me', 'Call permit office', 'Ask about #22-1187 if no word by today.', ['renovation', 'permit'], day(4));
+mk('reminder', 'agent:inbox-triage', 'Pick cabinet finish (Alice needs it Friday)', 'From Alice\'s email.', ['renovation'], day(2));
+mk('reminder', 'me', 'Dinner with the Hendersons, 7pm', '', ['family'], day(1));
+mk('turn', 'agent:followup', 'Check: did Bob confirm start date?', 'Scheduled wake-up — the agent will look for a reply and nudge if none.', ['renovation', 'contractor'], day(3));
+mk('reminder', 'me', 'Chapter 4 due to editor', '', ['book'], day(12));
+docs.sort((a, b) => b.created - a.created);
+
+// ---------- substreams ----------
+let subs = [
+  { id: 'all', q: '', label: 'Your Lifestream', parent: null },
+  { id: 's1', q: 'type:email', label: 'type:email', parent: 'all', persistent: true },
+  { id: 's2', q: '~"renovation"', label: '~"the house renovation"', parent: 'all', persistent: true, agent: 'followup' },
+  { id: 's3', q: 'contractor', label: 'contractor', parent: 's2' },
+  { id: 's4', q: '~"book"', label: '~"the book"', parent: 'all', persistent: true },
+  { id: 's5', q: 'type:reminder OR type:turn future:true', label: 'future', parent: 'all', agent: 'weekly-review' },
+];
+const agents = [['inbox-triage', '3h ago'], ['weekly-review', '5d ago'], ['followup', 'next: in 3d']];
+let cur = 'all', sel = null;
+
+function matchOne(d, term) {
+  let m;
+  if ((m = term.match(/^type:(\w+)$/))) return d.type === m[1];
+  if ((m = term.match(/^from:(\S+)$/))) return d.author.toLowerCase().includes(m[1].toLowerCase());
+  if (term === 'future:true') return isFut(d);
+  if ((m = term.match(/^~"?([^"]+)"?$/))) { // semantic predicate — faked as tag/word overlap
+    const words = m[1].toLowerCase().split(/\s+/).filter(w => w.length > 3);
+    return words.some(w => d.tags.some(t => t.startsWith(w.slice(0, 5))) || (d.title + d.body).toLowerCase().includes(w));
+  }
+  return (d.title + ' ' + d.body + ' ' + d.tags.join(' ') + ' ' + d.author).toLowerCase().includes(term.toLowerCase());
+}
+function tokenize(q) { return q.match(/~"[^"]*"|\S+/g) || []; }
+function match(d, q) {
+  if (!q.trim()) return true;
+  return q.split(/\s+OR\s+/).some(clause => {
+    const toks = tokenize(clause); let neg = false;
+    return toks.every(t => { if (t === 'AND') return true; if (t === 'NOT') { neg = true; return true; }
+      const r = matchOne(d, t); const out = neg ? !r : r; neg = false; return out; });
+  });
+}
+function chain(id) { const s = subs.find(x => x.id === id); return s.parent ? [...chain(s.parent), s] : [s]; }
+function members(id) { const c = chain(id); return docs.filter(d => c.every(s => match(d, s.q))); }
+
+// ---------- render ----------
+const $ = id => document.getElementById(id);
+const fmtDay = d => { const diff = Math.round((new Date(d).setHours(0,0,0,0) - new Date(NOW).setHours(0,0,0,0)) / 864e5);
+  if (diff === 0) return 'Today'; if (diff === -1) return 'Yesterday'; if (diff === 1) return 'Tomorrow';
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: d.getFullYear() !== NOW.getFullYear() ? 'numeric' : undefined }); };
+const fmtTime = d => d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+function renderSubs() {
+  const box = $('subs'); box.innerHTML = '';
+  const walk = (pid, depth) => subs.filter(s => s.parent === pid).forEach(s => {
+    const b = document.createElement('button'); b.className = 'sub' + (s.id === cur ? ' active' : '');
+    b.style.paddingLeft = (8 + depth * 14) + 'px';
+    const unread = members(s.id).filter(d => d.unread).length;
+    b.innerHTML = `<span class="q">${s.id === 'all' ? '● ' : (s.persistent ? '◆ ' : '◇ ')}${esc(s.label)}</span>${s.agent ? '<span class="ag">✦</span>' : ''}<span class="n">${unread || ''}</span>`;
+    b.title = s.id === 'all' ? 'The whole stream' : `${s.persistent ? 'Persistent — collects new matches' : 'Temporary'} · query: ${s.q}`;
+    b.onclick = () => focusSub(s.id); box.appendChild(b); walk(s.id, depth + 1);
+  });
+  walk(null, 0);
+  $('agents').innerHTML = agents.map(([n, t]) => `<div class="agent-row">✦ ${n}<small>${t}</small></div>`).join('');
+}
+
+function cardHTML(d, ageClass) {
+  const isAgent = d.author.startsWith('agent:') || d.author === 'claude';
+  const cls = ['card', isFut(d) ? 'future' : '', isAgent ? 'agent' : '', !d.frozen && !isFut(d) ? 'writable' : '', d.id === sel ? 'sel' : '', ageClass].join(' ');
+  return `<div class="${cls}" data-id="${d.id}">
+    <div class="ic">${ICON[d.type] || '•'}</div>
+    <div style="min-width:0"><div class="t">${esc(d.title)}${d.unread ? '<span class="dot"></span>' : ''}</div>
+      <div class="s">${isAgent ? `<span class="badge">✦ ${esc(d.author.replace('agent:', ''))}</span> · ` : esc(d.author === 'me' ? '' : d.author + ' · ')}${esc(d.body)}</div></div>
+    <div class="m">${fmtTime(d.created)}${d.frozen ? '<br>🔒' : ''}</div></div>`;
+}
+
+function renderStream(anim) {
+  const list = members(cur);
+  const future = list.filter(isFut).sort((a, b) => b.created - a.created);
+  const past = list.filter(d => !isFut(d));
+  const s = subs.find(x => x.id === cur);
+  let h = `<div class="focus-label">Focused on <b>${esc(chain(cur).map(x => x.label).join(' › '))}</b> · ${list.length} docs${past.length ? ` · ${fmtDay(past[past.length - 1].created)} → ${future.length ? fmtDay(future[0].created) : 'now'}` : ''}</div>`;
+  if (future.length) h += `<div class="zone">future · arriving</div>`;
+  let lastDay = '';
+  for (const d of future) { const k = fmtDay(d.created); if (k !== lastDay) { h += `<div class="day">${k}</div>`; lastDay = k; } h += cardHTML(d, ''); }
+  h += `<div class="now" id="nowline"><span>NOW · ${fmtTime(NOW)}</span></div>`;
+  lastDay = '';
+  past.forEach((d, i) => { const k = fmtDay(d.created); if (k !== lastDay) { h += `<div class="day">${k}</div>`; lastDay = k; }
+    h += cardHTML(d, i > 60 ? 'past-older' : i > 20 ? 'past-old' : ''); });
+  $('stream').innerHTML = h;
+  if (anim) { const el = $('stream').querySelector(`[data-id="${anim.id}"]`); if (el) el.classList.add(anim.kind); }
+  const sumName = summarizerFor(list); $('opSum').textContent = 'Summarize: ' + sumName;
+  drawMini();
+}
+
+function summarizerFor(list) {
+  const count = t => list.filter(d => d.type === t).length / (list.length || 1);
+  if (count('reminder') + count('turn') > .6) return 'To-do list';
+  if (count('email') > .5) return 'Email digest';
+  if (list.some(d => d.type === 'expense') && cur !== 'all') return 'Expenses + overview';
+  return cur === 'all' ? 'Week in review' : 'Overview';
+}
+
+function openDoc(id, pin) {
+  const d = docs.find(x => x.id === id); if (!d) return;
+  if (pin) { sel = id; document.querySelectorAll('.card.sel').forEach(c => c.classList.remove('sel'));
+    const el = document.querySelector(`[data-id="${id}"]`); if (el) el.classList.add('sel');
+    if (d.unread) { d.unread = false; renderSubs(); el?.querySelector('.dot')?.remove(); }
+    $('opClone').disabled = $('opXfer').disabled = false; $('pane').classList.add('show'); }
+  const inSubs = subs.filter(s => s.id !== 'all' && members(s.id).includes(d)).map(s => s.label);
+  const derived = d.derived_from.map(x => docs.find(y => y.id === x)).filter(Boolean);
+  const children = docs.filter(x => x.derived_from.includes(d.id));
+  $('pane').innerHTML = `<div class="hint">${ICON[d.type] || ''} ${d.type}${pin ? '' : ' · glance'}</div>
+    <h2>${esc(d.title)}</h2>
+    <div class="attrs">id:       ${d.id}\ncreated:  ${d.created.toLocaleString()}\nauthor:   ${esc(d.author)}\nfrozen:   ${d.frozen}${isFut(d) ? '\nstate:    future — arrives at created time' : ''}</div>
+    <div class="body">${esc(d.body) || '<i style="color:var(--muted)">(empty)</i>'}</div>
+    <h4>In substreams</h4><div>${inSubs.map(esc).join(' · ') || '—'}</div>
+    <h4>Provenance</h4>
+    <div>${d.author.startsWith('agent:') ? `Written by agent <b>${esc(d.author.slice(6))}</b>. ` : ''}${derived.length ? 'Derived from: ' + derived.map(x => `<a data-open="${x.id}">${esc(x.title)}</a>`).join(', ') : 'Original document.'}</div>
+    ${children.length ? `<h4>Derived since</h4><div>${children.map(x => `<a data-open="${x.id}">${esc(x.title)}</a>`).join('<br>')}</div>` : ''}`;
+}
+
+// ---------- minimap (the 1997 scrollbar, as a density histogram) ----------
+function drawMini() {
+  const cv = $('cv'), box = $('mini'), dpr = devicePixelRatio || 1;
+  cv.width = box.clientWidth * dpr; cv.height = box.clientHeight * dpr;
+  const g = cv.getContext('2d'); g.scale(dpr, dpr);
+  const W = box.clientWidth, H = box.clientHeight, cs = getComputedStyle(document.documentElement);
+  const list = members(cur); if (!list.length) return;
+  const t0 = Math.min(...list.map(d => +d.created)), t1 = Math.max(+NOW, ...list.map(d => +d.created));
+  const y = t => 8 + (1 - (t - t0) / (t1 - t0 || 1)) * (H - 16);
+  const bins = 80, counts = new Array(bins).fill(0);
+  list.forEach(d => counts[Math.min(bins - 1, Math.floor(((+d.created - t0) / (t1 - t0 || 1)) * bins))]++);
+  const max = Math.max(...counts), bh = (H - 16) / bins;
+  counts.forEach((c, i) => { if (!c) return; const w = 4 + (c / max) * (W - 14);
+    g.fillStyle = cs.getPropertyValue('--muted'); g.globalAlpha = .45; g.fillRect(W - 4 - w, y(t0 + (i + 1) / bins * (t1 - t0)), w, Math.max(1, bh - 1)); });
+  g.globalAlpha = 1;
+  g.fillStyle = cs.getPropertyValue('--accent'); g.fillRect(0, y(+NOW) - 1, W, 2);
+  // visible slice bracket
+  const cards = [...document.querySelectorAll('#stream .card')], sv = $('stream');
+  const vis = cards.filter(c => { const r = c.offsetTop - sv.scrollTop; return r > 0 && r < sv.clientHeight; });
+  if (vis.length) { const ds = vis.map(c => docs.find(d => d.id === c.dataset.id));
+    const ya = y(+ds[0].created), yb = y(+ds[ds.length - 1].created);
+    g.strokeStyle = cs.getPropertyValue('--ink'); g.lineWidth = 2; g.strokeRect(2, Math.min(ya, yb) - 2, W - 4, Math.abs(yb - ya) + 4); }
+  g.fillStyle = cs.getPropertyValue('--muted'); g.font = '10px ui-sans-serif';
+  [...new Set(list.map(d => d.created.getFullYear()))].forEach(yr => { const t = +new Date(yr, 0, 1); if (t > t0) { g.fillText(String(yr).slice(2), 3, y(t) + 3); } });
+  box._map = { t0, t1, y };
+}
+function scrubTo(clientY) {
+  const box = $('mini'), m = box._map; if (!m) return;
+  const H = box.clientHeight, f = 1 - (clientY - box.getBoundingClientRect().top - 8) / (H - 16);
+  const t = m.t0 + f * (m.t1 - m.t0);
+  const cards = [...document.querySelectorAll('#stream .card')];
+  let best = cards[0], bd = Infinity;
+  cards.forEach(c => { const d = docs.find(x => x.id === c.dataset.id); const k = Math.abs(+d.created - t); if (k < bd) { bd = k; best = c; } });
+  const sv = $('stream'); sv.style.scrollBehavior = 'auto'; sv.scrollTop = best.offsetTop - 60; sv.style.scrollBehavior = '';
+}
+
+// ---------- operations ----------
+function focusSub(id) { cur = id; renderSubs(); renderStream(); scrollToNow(); }
+function scrollToNow() { const n = $('nowline'); if (n) $('stream').scrollTop = Math.max(0, n.offsetTop - 140); }
+function append(d, kind) { docs.unshift(d); docs.sort((a, b) => b.created - a.created); renderSubs(); renderStream({ id: d.id, kind }); scrollToNow(); openDoc(d.id, true); }
+
+$('opNew').onclick = () => { const d = mk('note', 'me', 'Untitled note', 'Start typing… (stored at the head of the stream — no name, no folder)', [], new Date()); docs.pop(); append(d, 'drop'); };
+$('opClone').onclick = () => { const s = docs.find(x => x.id === sel); if (!s) return;
+  const d = mk(s.type, 'me', s.title + ' (copy)', s.body, s.tags, new Date(), { derived_from: [s.id] }); docs.pop(); append(d, 'drop'); };
+$('opXfer').onclick = () => { const s = docs.find(x => x.id === sel); if (!s) return;
+  const to = prompt('Transfer to whose stream?', 'alice@example.com'); if (!to) return;
+  s.frozen = true; openDoc(s.id, true); flash(`Copied a frozen version of “${s.title}” to ${to}'s stream`); };
+$('opSum').onclick = () => { const list = members(cur).filter(d => !isFut(d)).slice(0, 40);
+  const name = $('opSum').textContent.replace('Summarize: ', '');
+  const d = mk('summary', 'agent:summarize', `${name} — ${chain(cur).slice(-1)[0].label}`,
+    `Overview of the ${list.length} most recent docs in this substream. ${list.filter(x => x.unread).length} unread. Most active: ${[...new Set(list.map(x => x.author))].slice(0, 3).join(', ')}. (An LLM writes this in the real system.)`,
+    chain(cur).slice(-1)[0].label.includes('renov') ? ['renovation'] : [], new Date(), { derived_from: list.slice(0, 8).map(x => x.id) });
+  docs.pop(); append(d, 'slide'); };
+
+$('q').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return; const v = e.target.value.trim(); if (!v) return;
+  const isAsk = e.metaKey || e.ctrlKey || (/\?$/.test(v) || /^(what|who|when|where|how|why|did|is|are|can|show me)\b/i.test(v)) && !/\w:\S|~"/.test(v);
+  if (isAsk) {
+    const words = v.toLowerCase().replace(/[?]/g, '').split(/\s+/).filter(w => w.length > 3 && !['what', 'when', 'where', 'did', 'does', 'the', 'about'].includes(w));
+    const hits = docs.filter(d => !isFut(d) && d.type !== 'turn' && words.some(w => (d.title + d.body).toLowerCase().includes(w.slice(0, 6)))).slice(0, 3);
+    const q = mk('turn', 'me', 'you: ' + v, v, hits[0]?.tags || [], new Date()); docs.pop(); docs.unshift(q);
+    const a = mk('turn', 'claude', 'claude: ' + (hits[0] ? hits[0].title : 'Nothing found'),
+      hits.length ? `From your stream: “${hits[0].body}” — cites ${hits.length} doc(s).` : 'I couldn’t find anything in your stream about that. (Mock answer.)',
+      hits[0]?.tags || [], new Date(Date.now() + 1), { derived_from: hits.map(h => h.id) });
+    docs.pop(); e.target.value = ''; append(a, 'slide');
+  } else {
+    const id = 's' + Date.now(); subs.push({ id, q: v, label: v, parent: cur });
+    e.target.value = ''; focusSub(id);
+  }
+});
+document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); $('q').focus(); } });
+
+const sv = $('stream');
+sv.addEventListener('mouseover', e => { const c = e.target.closest('.card'); if (c && !sel) openDoc(c.dataset.id, false); });
+sv.addEventListener('click', e => { const c = e.target.closest('.card'); if (c) openDoc(c.dataset.id, true); });
+sv.addEventListener('scroll', () => requestAnimationFrame(drawMini));
+$('pane').addEventListener('click', e => { const a = e.target.closest('[data-open]'); if (!a) return;
+  const el = document.querySelector(`[data-id="${a.dataset.open}"]`); if (!el) { focusSub('all'); }
+  openDoc(a.dataset.open, true); document.querySelector(`[data-id="${a.dataset.open}"]`)?.scrollIntoView({ block: 'center' }); });
+let dragging = false; const mini = $('mini');
+mini.addEventListener('pointerdown', e => { dragging = true; mini.setPointerCapture(e.pointerId); scrubTo(e.clientY); });
+mini.addEventListener('pointermove', e => dragging && scrubTo(e.clientY));
+mini.addEventListener('pointerup', () => dragging = false);
+addEventListener('resize', drawMini);
+
+function flash(msg) { const f = document.createElement('div'); f.textContent = msg;
+  Object.assign(f.style, { position: 'fixed', bottom: '64px', left: '50%', transform: 'translateX(-50%)', background: 'var(--ink)', color: 'var(--bg)', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', zIndex: 20 });
+  document.body.appendChild(f); setTimeout(() => f.remove(), 2600); }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function tick() { $('clock').textContent = '⏱ ' + NOW.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+
+// simulate an incoming email sliding in after a few seconds
+setTimeout(() => { const d = mk('email', 'bob@contractor.co', 'Start date confirmed: Monday', 'We can start the panel upgrade Monday at 8am.', ['renovation', 'contractor'], new Date(), { unread: true });
+  docs.pop(); docs.unshift(d); docs.sort((a, b) => b.created - a.created); renderSubs(); renderStream({ id: d.id, kind: 'slide' }); }, 4000);
+
+tick(); renderSubs(); renderStream(); scrollToNow();
+</script>
+</body>
+</html>
