@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "lifestreams",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server/main.mjs"],
+      "port": 4747
+    }
+  ]
+}

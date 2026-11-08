@@ -265,9 +265,9 @@ from which trigger, and what was later derived from it.
 the model has. `Summarize` is relabelled with the summarizer that applies to the current
 substream.
 
-A working static mockup is in [`prototype/index.html`](../prototype/index.html). It
-shows the layout, the Now line, future docs, substream focusing, find filtering, the
-minimap, and the glance pane, all on fake data.
+The working prototype is in [`server/`](../server) and [`web/`](../web); see the README for
+how to run it. The original static mockup is still in
+[`prototype/index.html`](../prototype/index.html).
 
 ## 5. Architecture v0
 
@@ -309,7 +309,40 @@ browser UI  ──HTTP/JSON + SSE──▶  lifestreamd (local, single process)
   them), or should all agents share the user's stream? Starting with one shared stream
   is simpler.
 
-## 7. Build order
+## 7. Prototype status (v0)
+
+Built: steps 1–6 below at prototype quality, in plain Node with one dependency (the
+Anthropic SDK).
+
+- **Store.** It reads and writes the file layout in §3 and watches `stream/` for files
+  dropped in by other tools. It auto-freezes docs untouched for 14 days. Read/unread state
+  lives in `.index/`.
+- **Find.** The full query language from §3 is implemented, including `like:<id>`. Nested
+  substreams are ANDed. Substreams start temporary and can be pinned to make them
+  persistent.
+- **Semantic predicates, v0.** `~"topic"` is expanded *once per topic* by the model into a
+  list of search terms (cached in `.index/semantic.json`), which are then matched at word
+  boundaries. It's cheap and deterministic, but still lexical: in the seed data, `~"the
+  book"` picks up "book the place on Chapel". The per-document LLM judgement from §3,
+  cached forever because frozen docs never change, is the v1 step.
+- **Ask.** A manual tool loop over `find`, `read`, `new_document`, `clone`, and `summarize`.
+  The question and the answer are both `turn` docs. The answer's `derived_from` lists every
+  doc the model found or read, plus every doc it cited.
+- **Summarize.** Summarizers are files that pair a `test` query with a prompt. Each one
+  applies when at least `min_fraction` of the substream matches its test. A built-in
+  `overview` always applies.
+- **Agents.** Agents watch queries and fire on append and on arrival. A `wakeup` doc an
+  agent wrote for itself fires that agent. Loop guards: an agent ignores its own docs,
+  agent-derived chains stop at depth 2, and each agent is capped at 30 runs per hour.
+- **Clock.** Wakes at the next future doc. It also catches up on arrivals missed while the
+  server was down (tracked as `lastClock`), and a `clock` file sets a time-travel offset.
+- **Without an API key,** ask falls back to keyword search and summarize to a statistical
+  overview, and agents report themselves offline.
+
+Not yet: ingest (mail, files, bookmarks), the full-text and embeddings index, per-document
+semantic judgements, privacy rules about what may leave the machine, multi-stream UI, auth.
+
+## 8. Build order
 
 1. **Store + UI, read-only.** Seed a few hundred fake docs. Render the stream, the Now
    line, day headers, and the minimap.

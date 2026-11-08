@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lifestreams</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="app">
+  <header>
+    <button id="menuBtn" class="op small" style="display:none">☰</button>
+    <div class="logo">Life<span>streams</span></div>
+    <label class="find">
+      <span class="mode" id="mode">find</span>
+      <input id="q" autocomplete="off" spellcheck="false"
+        placeholder='find:  type:email from:alice  ·  ~"renovation"  ·  or ask:  what did the electrician quote?'>
+      <kbd>⌘K</kbd>
+    </label>
+    <span class="pill" id="llm" title="">model</span>
+    <span class="clock" id="clock"></span>
+  </header>
+  <main>
+    <nav class="rail" id="rail">
+      <h3>Substreams</h3>
+      <div id="subs"></div>
+      <div class="help">◆ persistent · ◇ temporary — click to pin</div>
+      <h3>Agents</h3>
+      <div id="agents"></div>
+    </nav>
+    <section class="stream" id="stream"></section>
+    <aside class="pane" id="pane"></aside>
+    <div class="mini" id="mini" title="Drag to travel through time"><canvas id="cv"></canvas></div>
+  </main>
+  <footer>
+    <button class="op" id="opNew" title="New document at the head of the stream (N)">New</button>
+    <button class="op" id="opClone" disabled>Clone</button>
+    <button class="op" id="opXfer" disabled>Transfer</button>
+    <span class="split">
+      <button class="op primary" id="opSum">Summarize</button>
+      <button class="op primary" id="opSumMore" title="Other summarizers">▾</button>
+    </span>
+    <span class="status" id="status"></span>
+  </footer>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

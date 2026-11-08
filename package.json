@@ -1,0 +1,13 @@
+{
+  "name": "lifestreams-2026",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seed": "node server/seed.mjs",
+    "start": "node server/main.mjs",
+    "dev": "node --watch server/main.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0"
+  }
+}
