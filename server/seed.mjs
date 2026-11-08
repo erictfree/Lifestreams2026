@@ -5,6 +5,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Store } from './store.mjs';
+import { isText } from './formats.mjs';
+import { scenes, pdf, voiceMemo, kitchenPlan, csvExpenses, ics, eml, articleHtml } from './samples.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = process.env.LIFESTREAM_DIR || path.join(here, '..', 'lifestreams', 'me');
@@ -32,21 +34,24 @@ const T = {
     ['email', 'permits@town.gov', 'Permit application received — #22-1187', 'Your building permit application #22-1187 (kitchen renovation, interior) has been received and is under review. Typical review time is 10 business days.'],
     ['email', 'bob@harborelectric.co', 'Re: start date', 'Inspector found knob-and-tube in the east wall. Remediation adds about $900. I can send a revised quote.'],
     ['note', 'me', 'Kitchen: decisions list', '- Island: 7ft, seating on the long side\n- Range: induction (36")\n- Sink under window, not in island\n- Need to decide: cabinet finish, backsplash tile, pendant lights'],
-    ['photo', 'me', 'IMG_${n}.heic', 'Photo: kitchen east wall opened up; old knob-and-tube wiring visible near the window.'],
-    ['file', 'me', 'Quote_HarborElectric.pdf', 'Scanned quote from Harbor Electric, 2 pages. Panel upgrade, 4 circuits, lighting. $3,400.'],
+    ['photo', 'me', 'IMG_${n}.png', 'Photo: kitchen east wall opened up; old knob-and-tube wiring visible near the window.', 'wall'],
+    ['file', 'me', 'Quote_HarborElectric.pdf', 'Scanned quote from Harbor Electric. Panel upgrade, 4 circuits, lighting. $3,400.', 'quote'],
+    ['photo', 'me', 'backsplash-sample-${n}.png', 'Photo of a backsplash tile sample held against the wall.', 'tile'],
+    ['image', 'me', 'kitchen-plan.svg', 'Floor plan sketch: island, sink under the window, 42" aisles.', 'plan'],
     ['bookmark', 'me', 'Kitchen layout planner', 'https://example.com/planner — saved for the island measurements (7ft x 3.5ft, 42" aisles).'],
     ['expense', 'me', 'Home Depot — $${amt}', 'Receipt. Drywall screws, joint compound, painter\'s tape, 2 sheets of 1/2" drywall. Category: renovation.'],
     ['email', 'alice@studio-kitchens.com', 'Backsplash tile options', 'Three tile options attached: zellige in white, a 2x8 handmade in sage, and a plain 3x6 subway. The zellige is the most expensive (~$38/sqft).'],
   ],
   book: [
     ['email', 'editor@harbor-press.com', 'Chapter ${ch} edits', 'Comments attached. Mostly about the agents section — I think it needs one worked example before the formal definition. Otherwise in good shape.'],
-    ['file', 'me', 'chapter${ch}-draft.md', '# Chapter ${ch}\n\nDraft, about ${words} words. Open issues: the worked example, figure numbering, and the summary at the end.'],
+    ['file', 'me', 'chapter${ch}-draft.pdf', '# Chapter ${ch}\n\nDraft, about ${words} words. Open issues: the worked example, figure numbering, and the summary at the end.', 'chapter'],
     ['note', 'me', 'Book: idea for chapter ${ch}', 'Open with the receding-stack image, then explain why time is the one attribute every document already has.'],
     ['email', 'editor@harbor-press.com', 'Schedule check-in', 'Just checking we\'re still on track for the chapter ${ch} draft by the end of the month. No pressure — let me know if you need more time.'],
   ],
   lifestreams: [
     ['note', 'me', 'Ideas: the stream as a harness', 'Conversation = documents. Memory = the stream itself. Compaction = summarize. Scheduling = future documents. Hand-off = transfer.'],
     ['bookmark', 'me', 'Linda coordination language', 'cs.yale.edu — tuple spaces; in / out / rd / eval. Nice fit for describing stream operations.'],
+    ['code', 'me', 'stream_agent.py', '', 'code'],
     ['note', 'me', 'Substream accuracy', 'Old user study: substream success 78–95%. People asked for concept-based search and "find more like this". Both are cheap now.'],
     ['email', 'nick@cs.example.edu', 'Re: Lifestreams revisited', 'Read your note — agree the agent part is the interesting bit now. Happy to look at a draft of the design.'],
   ],
@@ -54,13 +59,16 @@ const T = {
     ['email', 'elisabeth', 'dinner Saturday?', 'The Hendersons can do 7. Want to book the place on Chapel?'],
     ['email', 'elisabeth', 'flights for Thanksgiving', 'Found two options: Wed 6pm nonstop or Thu 7am. The Wednesday one is $80 more each. Thoughts?'],
     ['note', 'me', 'Gift ideas', 'For Mom: the photo book from the summer trip. For Sam: climbing shoes (size 9).'],
-    ['photo', 'me', 'IMG_${n}.heic', 'Photo: everyone on the porch after dinner.'],
+    ['photo', 'me', 'IMG_${n}.png', 'Photo: everyone on the porch after dinner.', 'porch'],
+    ['audio', 'me', 'Voice memo ${n}.wav', 'Voice memo recorded on my phone.', 'voice'],
   ],
   misc: [
     ['email', 'newsletter@techweekly.io', 'This week in AI', 'Headlines: new context-window records, agent benchmarks, and a long read on personal knowledge tools.'],
     ['note', 'me', 'Toaster oven research', 'Breville vs Cuisinart — Breville has better convection and the dial UI is nicer. ~$280.'],
     ['expense', 'me', 'Receipt — ${vendor} $${amt}', 'Receipt from ${vendor}. Category: household.'],
-    ['bookmark', 'me', 'Article: ${topic}', 'Saved to read later: a long piece on ${topic}.'],
+    ['bookmark', 'me', 'Article: ${topic}', 'Saved to read later: a long piece on ${topic}.', 'article'],
+    ['sheet', 'me', 'expenses.csv', 'Monthly card export.', 'csv'],
+    ['audio', 'me', 'Voice memo ${n}.wav', 'Voice memo: idea while walking.', 'voice'],
     ['email', 'accounts@utility.example.com', 'Your statement is ready', 'Your monthly statement is available. Amount due: $${amt}. Due in 21 days.'],
   ],
 };
@@ -68,12 +76,16 @@ const WEIGHT = { renovation: 3, book: 2, lifestreams: 1.2, family: 1.5, misc: 2 
 const TOPICS = ['personal information management', 'time-based interfaces', 'the history of the desktop metaphor', 'agent memory systems', 'zooming user interfaces'];
 const VENDORS = ['Whole Foods', 'Amazon', 'Hardware Co', 'Pharmacy'];
 
+// One set of values per document, so a title and its body agree ("chapter 6" in both).
+let vals = null;
+const newVals = () => (vals = null);
 function fill(s) {
-  return s.replace(/\$\{(\w+)\}/g, (_, k) => ({
+  return s.replace(/\$\{(\w+)\}/g, (_, k) => (vals ??= {
     n: 4400 + Math.floor(rnd() * 600), amt: (20 + rnd() * 280).toFixed(2), ch: 1 + Math.floor(rnd() * 9),
     words: 3000 + Math.floor(rnd() * 5000), vendor: pick(VENDORS), topic: pick(TOPICS),
   })[k]);
 }
+
 
 function topicAt(ageDays) {
   // the renovation is recent; the book runs through the whole period
@@ -83,12 +95,69 @@ function topicAt(ageDays) {
   return 'misc';
 }
 
+// generators for the real files
+const ym = t => new Date(t).toISOString().slice(0, 7);
+const longDate = t => new Date(t).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+const CHAPTER = [
+  'Every document already carries one attribute we never have to invent: the moment it came into being. Folders ask us to decide, at the worst possible time, where something belongs. Time asks nothing of us at all.',
+  'A stream is the simplest structure that respects this. New things arrive at the head; old things recede. Nothing is lost, and nothing needs a name unless we want to give it one.',
+  'Organization happens later, on demand. A substream is a question we ask of the stream - "everything from Alice", "everything about the kitchen" - and the answer keeps itself current as new documents arrive.',
+  'The future is part of the stream too. A reminder is simply a document dated tomorrow. When tomorrow comes, it arrives, like mail.',
+  'What changes when the stream has a reader of its own? An agent can watch a substream the way we once watched an inbox, and everything it does is written back as a document, so the record of its work is the stream itself.',
+];
+const GEN = {
+  wall: ({ seed }) => ({ buf: scenes.wall(seed) }),
+  porch: ({ seed }) => ({ buf: scenes.porch(seed) }),
+  tile: ({ seed }) => ({ buf: scenes.tile(seed) }),
+  plan: ({ seed }) => ({ buf: kitchenPlan(seed % 2), name: `kitchen-plan-v${1 + seed % 2}.svg`, title: `Kitchen plan v${1 + seed % 2}` }),
+  quote: ({ t }) => ({ buf: pdf([{ letterhead: 'HARBOR ELECTRIC CO.', title: 'Estimate #E-2231', subtitle: `Prepared ${longDate(t)} · Kitchen renovation, 14 Orchard St.`,
+    lines: ['Scope: upgrade the main service panel to 200A, add four dedicated 20A kitchen circuits, and install under-cabinet LED lighting on a dimmer. Includes permit and inspection.'],
+    table: [['Item', 'Amount'], ['Panel upgrade to 200A', '$1,850.00'], ['4 kitchen circuits (20A)', '$980.00'], ['Under-cabinet LED lighting', '$570.00']], total: '$3,400.00',
+    footer: 'Estimate valid 30 days. Two days on site. Permit pulled by Harbor Electric.' }]) }),
+  chapter: ({ seed, name }) => {
+    const ch = name.match(/\d+/)?.[0] || '4';
+    const paras = Array.from({ length: 9 }, (_, k) => CHAPTER[(k + seed) % CHAPTER.length]);
+    return { buf: pdf([{ title: `Chapter ${ch}: Time as a Storage Model`, subtitle: 'Draft - not for circulation', lines: paras.slice(0, 5) },
+      { title: `${ch}.2  Substreams and the future`, lines: paras.slice(5) }]) };
+  },
+  voice: ({ seed }) => ({ buf: voiceMemo(seed, 3 + seed % 3) }),
+  csv: ({ t, seed }) => {
+    const V = [['Whole Foods', 'groceries'], ['Hardware Co', 'renovation'], ['City Utility', 'household'], ['Pharmacy', 'health'], ['Bookshop', 'books'], ['Gas Station', 'car']];
+    const rows = Array.from({ length: 14 }, (_, k) => { const [v, c] = V[(k * 7 + seed) % V.length]; return { d: 1 + (k * 2) % 28, v, c, a: 8 + ((k * 37 + seed * 13) % 240) + (k % 3) * .49 }; }).sort((a, b) => a.d - b.d);
+    return { buf: csvExpenses(ym(t), rows), name: `expenses-${ym(t)}.csv`, title: `Expenses ${ym(t)}` };
+  },
+  article: ({ name }) => {
+    const topic = name.replace(/^Article:\s*/, '');
+    return { buf: articleHtml(topic[0].toUpperCase() + topic.slice(1), [
+      `A long read on ${topic}.`, 'The argument, roughly: the tools we use to keep things shape what we are able to remember, and most of them were designed around storage devices rather than people.',
+      'Chronology keeps coming back as the organizing principle that survives - people remember roughly when, even when they cannot remember where.']), name: `${topic.replace(/\s+/g, '-')}.html` };
+  },
+  code: () => ({ buf: Buffer.from(`# Tiny sketch: an agent that watches a substream.
+from lifestreams import Stream
+
+stream = Stream.open("~/lifestream")
+mail = stream.substream('type:email NOT from:me', persistent=True)
+
+@mail.on_arrival
+def triage(doc):
+    if "by friday" in doc.body.lower():
+        stream.new(type="reminder", title=f"Reply: {doc.title}",
+                   at=doc.created.next_weekday("thursday", hour=9),
+                   derived_from=[doc.id])
+`) }),
+};
+
 let n = 0;
 for (let i = 0; i < 650; i++) {
   const age = Math.pow(rnd(), 1.8) * 540 + 0.02;
-  const [type, author, title, body] = pick(T[topicAt(age)]);
+  newVals();
+  const [type, author, title, body, gen] = pick(T[topicAt(age)]);
   const t = NOW - age * DAY;
-  store.append({ type, author, title: fill(title), body: fill(body), created: t, frozen: age > 14 });
+  if (gen) {
+    const name = fill(title), out = GEN[gen]({ t, seed: i, name, body: fill(body) });
+    const fname = out.name || name;
+    store.importFile(out.buf, fname, { created: t, author, type, title: out.title || fname, body: isText(fname.split('.').pop()) ? undefined : fill(body), frozen: age > 14 });
+  } else store.append({ type, author, title: fill(title), body: fill(body), created: t, frozen: age > 14 });
   n++;
 }
 
@@ -100,6 +169,16 @@ store.append({ type: 'turn', author: 'claude', title: 'Around ten business days 
 const edits = store.find('type:email edits')[0];
 store.append({ type: 'reminder', author: 'agent:inbox-triage', title: 'Reply to editor about chapter edits', body: 'Your editor asked for a response on the agents-section comments.', created: ago(3), derived_from: edits ? [edits.id] : [] });
 
+// a few specific real files that belong to the story
+store.importFile(eml({ from: 'Alice Moreno <alice@studio-kitchens.com>', to: 'me@example.com', subject: 'Cabinet samples — photos from the showroom', date: ago(5),
+  body: 'Hi!\n\nAttaching a couple of photos from the showroom so you can see both finishes in daylight. The white oak reads warmer than the sample chip.\n\nWe still need your pick by Friday to hold the install slot.\n\nAlice' }), 'cabinet-samples.eml');
+store.importFile(pdf([{ letterhead: 'HARBOR ELECTRIC CO.', title: 'Estimate #E-2231-R (revised)', subtitle: `Prepared ${longDate(ago(20))} · Kitchen renovation`,
+  lines: ['Revised after the wall was opened: knob-and-tube wiring found in the east wall must be removed and replaced before the new circuits go in.'],
+  table: [['Item', 'Amount'], ['Panel upgrade to 200A', '$1,850.00'], ['4 kitchen circuits (20A)', '$980.00'], ['Under-cabinet LED lighting', '$570.00'], ['Knob-and-tube remediation (east wall)', '$900.00']],
+  total: '$4,300.00', footer: 'Replaces estimate #E-2231.' }]), 'Estimate_E-2231-R.pdf', { created: ago(20), author: 'bob@harborelectric.co', title: 'Revised estimate — $4,300' });
+store.importFile(scenes.wall(99), 'IMG_5102.png', { created: ago(26), title: 'IMG_5102.png', body: 'Photo: the knob-and-tube run in the east wall, close up.' });
+store.importFile(voiceMemo(7, 5), 'Voice memo — island seating.wav', { created: ago(9), body: 'Voice memo: thinking the island seating should be on the long side, three stools.' });
+
 // the future
 const at = (days, hour) => { const d = new Date(NOW + days * DAY); d.setHours(hour, 0, 0, 0); return d.getTime(); };
 store.append({ type: 'reminder', author: 'me', title: 'Dinner with the Hendersons, 7pm', body: 'Place on Chapel St.', created: at(1, 17) });
@@ -109,6 +188,8 @@ store.append({ type: 'reminder', author: 'me', title: 'Call the permit office ab
 const sunday = (() => { const d = new Date(NOW); d.setDate(d.getDate() + ((7 - d.getDay()) % 7 || 7)); d.setHours(18, 0, 0, 0); return d.getTime(); })();
 store.append({ type: 'wakeup', author: 'agent:weekly-review', title: 'Weekly review', body: 'Time for the weekly review.', created: sunday });
 store.append({ type: 'todo', author: 'me', title: 'Chapter draft due to editor', body: '', created: at(12, 9) });
+store.importFile(ics({ uid: 'panel-upgrade@harborelectric.co', start: at(9, 8), minutes: 16 * 60, summary: 'Panel upgrade — Harbor Electric on site', location: '14 Orchard St.',
+  description: 'Two days. Power off 9am–1pm on day one.\nBob: (555) 010-2231' }), 'panel-upgrade.ics', { author: 'bob@harborelectric.co' });
 
 // substreams
 const sub = (id, query, label, parent = 'all') => store.saveSub({ id, query, label, parent, created: new Date(NOW).toISOString() });

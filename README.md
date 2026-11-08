@@ -31,6 +31,30 @@ Three views of the same stream, switched in the header or with keys `1` `2` `3`:
   page behind the front to bring it forward.
 - **River**: days as columns flowing left to right, with the Now line between past and
   future. The mouse wheel moves through time.
+- **Atlas**: the whole stream on the GPU (three.js / WebGL2). It's a wall of cards, one
+  column per day. Zoomed out it reads as a color-coded map of formats. Zoom in and each
+  card renders its real content: PDF pages (pdf.js), photos, SVG drawings, audio
+  waveforms decoded from the file, spreadsheet grids, calendar invites, mail, saved
+  pages, and syntax-colored code. Detail sharpens as you get closer. Click a card to fly
+  to it and open it. The legend filters by format, and `0` returns to now.
+
+## Real files, any format
+
+A document can carry a file of its own (PDF, PNG/JPEG, SVG, WAV/MP3, MP4, CSV, ICS, EML,
+HTML, code…), stored next to its markdown sidecar. To add one, do any of these:
+
+- Drop files anywhere on the page.
+- Attach them in the New composer.
+- Copy them straight into `stream/`. A file copied in this way is **moved** to its place
+  in time (dated by the file's own timestamps) and gets a sidecar.
+
+Text is pulled out of the file so find can see inside it. That covers PDFs, CSV, email,
+calendar invites, HTML, and code. For email, the sender, subject, and date also become
+the document's attributes. A calendar invite lands on its date, so a future invite
+becomes a future document. Every format has a full viewer in the document pane.
+
+The sample stream contains real generated files (PDF, PNG, WAV, SVG, CSV, ICS, EML, HTML,
+Python), about 12 MB in total.
 
 `npm run seed` writes a sample lifestream (about 650 documents over 18 months, plus
 substreams, agents and summarizers) to `lifestreams/me/`. Run `npm run seed -- --force` to
@@ -78,5 +102,6 @@ documents arrive (and wake agents) when their time comes.
 
 - `server/`: `store.mjs` (files ↔ memory), `query.mjs` (find language), `harness.mjs`
   (tools, ask, summarize, agents, clock), `llm.mjs` (Anthropic SDK), `main.mjs` (HTTP + SSE)
-- `web/`: the browser client
+- `web/`: the browser client. `formats.js` holds the per-format viewers and thumbnails, and
+  `atlas.js` is the GPU view.
 - `prototype/index.html`: the original static mockup

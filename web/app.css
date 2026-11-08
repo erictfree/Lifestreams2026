@@ -209,3 +209,63 @@ footer .status { margin-left: auto; color: var(--muted); font-size: 12px; }
   .find .mode { display: none; }
   .col { flex-basis: 78vw; }
 }
+
+/* ---------- atlas view: the GPU wall ---------- */
+.stream.v-atlas { overflow: hidden; padding: 0; position: relative; }
+.atlas-label { position: absolute; top: 0; left: 0; right: 0; padding: 12px 24px; z-index: 5; pointer-events: none; background: linear-gradient(var(--bg) 40%, transparent); }
+.atlas { position: absolute; inset: 0; cursor: grab; touch-action: none; }
+.atlas:active { cursor: grabbing; }
+.atlas-gl { display: block; width: 100%; height: 100%; }
+.atlas-hud { position: absolute; inset: 0; pointer-events: none; font-size: 12px; }
+.atlas-hud > * { position: absolute; }
+.a-range { top: 34px; left: 24px; font-size: 22px; font-weight: 700; letter-spacing: -.02em; text-shadow: 0 0 12px var(--bg); }
+.a-legend { top: 66px; left: 24px; right: 24px; display: flex; flex-wrap: wrap; gap: 4px; pointer-events: auto; }
+.a-legend button { border: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 85%, transparent); backdrop-filter: blur(8px); border-radius: 99px; padding: 2px 9px; font-size: 11px; cursor: pointer; display: flex; gap: 6px; align-items: center; }
+.a-legend button i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.a-legend button b { color: var(--muted); font-weight: 600; }
+.a-legend button.off { opacity: .35; }
+.a-info { bottom: 12px; left: 16px; color: var(--muted); background: color-mix(in srgb, var(--panel) 80%, transparent); backdrop-filter: blur(8px); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.a-help { bottom: 44px; left: 16px; color: var(--muted); font-size: 11px; background: color-mix(in srgb, var(--panel) 80%, transparent); backdrop-filter: blur(8px); padding: 3px 10px; border-radius: 8px; border: 1px solid var(--line); }
+.a-help kbd { border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+
+/* ---------- format viewers in the document pane ---------- */
+.ext { font: 700 9px var(--mono); text-transform: uppercase; letter-spacing: .04em; border: 1px solid var(--line); color: var(--muted); border-radius: 4px; padding: 0 4px; margin-right: 6px; vertical-align: 2px; }
+.viewer { margin: 10px 0 12px; }
+.filechip { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 12px; padding: 8px 10px; background: var(--bg); border-radius: 8px; margin-bottom: 10px; }
+.filechip b { font: 700 11px var(--mono); color: var(--accent); }
+.filechip span:first-of-type { font-weight: 600; overflow-wrap: anywhere; }
+.filechip a { margin-left: auto; }
+.dim { color: var(--muted); font-size: 12px; }
+.vimg { width: 100%; border-radius: 8px; display: block; background: var(--bg); }
+.vpage { display: block; margin: 8px 0; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.15), 0 6px 20px rgba(0,0,0,.08); background: #fff; max-width: 100%; }
+.vwave { width: 100%; height: 70px; display: block; cursor: pointer; }
+.viewer audio { width: 100%; margin-top: 6px; }
+.vtable { overflow: auto; max-height: 420px; border: 1px solid var(--line); border-radius: 8px; }
+.vtable table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.vtable th, .vtable td { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.vtable th { position: sticky; top: 0; background: var(--bg); }
+.vtable td.n { text-align: right; font-variant-numeric: tabular-nums; }
+.vtable tfoot td { border-top: 2px solid var(--line); }
+.vcal { display: flex; gap: 14px; align-items: flex-start; line-height: 1.6; }
+.vcal .cal { flex: none; width: 84px; text-align: center; border-radius: 12px; overflow: hidden; background: #fff; color: #1d1c1a; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+.vcal .mo { background: #e5484d; color: #fff; font: 700 12px/24px ui-sans-serif; }
+.vcal .dd { font: 700 38px/48px ui-sans-serif; }
+.vcal .wd { font-size: 11px; color: #7b766d; padding-bottom: 6px; }
+.vcal .sum { font-weight: 700; font-size: 15px; }
+.vcal .desc { white-space: pre-wrap; margin: 6px 0; }
+.vmail { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.6; }
+.vmail .dim { display: inline-block; width: 40px; }
+.vmail .subj { font-weight: 700; font-size: 15px; margin: 6px 0; }
+.vmail pre { white-space: pre-wrap; font: inherit; margin: 8px 0 0; border-top: 1px solid var(--line); padding-top: 8px; }
+.vbrowser { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.vbrowser .bar { display: flex; gap: 5px; align-items: center; padding: 6px 8px; background: var(--bg); font-size: 11px; color: var(--muted); }
+.vbrowser .bar i { width: 9px; height: 9px; border-radius: 50%; background: #ff5f57; }
+.vbrowser .bar i:nth-child(2) { background: #febc2e; } .vbrowser .bar i:nth-child(3) { background: #28c840; }
+.vbrowser .bar span { margin-left: 8px; }
+.vbrowser iframe { width: 100%; height: 360px; border: 0; background: #fff; }
+.vcode { font: 12px/1.55 var(--mono); background: #16151a; color: #e4e2ea; padding: 12px; border-radius: 8px; overflow: auto; }
+.vcode .k { color: #c792ea; } .vcode .s { color: #c3e88d; } .vcode .c { color: #7c7a85; font-style: italic; } .vcode .d { color: #82aaff; }
+
+/* drop files anywhere */
+body.dropping::after { content: 'Drop to add to your lifestream — any format'; position: fixed; inset: 12px; z-index: 100; border: 3px dashed var(--accent); border-radius: 18px; background: color-mix(in srgb, var(--accent) 10%, transparent); display: grid; place-items: center; font-size: 20px; font-weight: 700; color: var(--accent); pointer-events: none; }
+@media (max-width: 860px) { .a-legend, .a-help { display: none; } .a-range { font-size: 16px; } }

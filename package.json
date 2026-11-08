@@ -8,6 +8,8 @@
     "dev": "node --watch server/main.mjs"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.6.0"
+    "@anthropic-ai/sdk": "^1.6.0",
+    "pdfjs-dist": "^6.5.438",
+    "three": "^0.187.0"
   }
 }

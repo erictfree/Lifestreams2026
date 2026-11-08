@@ -339,6 +339,13 @@ Anthropic SDK).
 - **Without an API key,** ask falls back to keyword search and summarize to a statistical
   overview, and agents report themselves offline.
 
+- **Files.** Any file can be a document. It sits beside a markdown sidecar, and text is
+  extracted from it for search (including PDF content streams). Files dropped into
+  `stream/` are imported and moved into place by time.
+- **Views.** There are four: Feed, Stack (1997), River, and Atlas. Atlas is a GPU wall
+  with semantic zoom and per-format textures rendered on demand. Distant cards draw as
+  flat color, and textures sharpen as you zoom in, with about 420 resident at once.
+
 Not yet: ingest (mail, files, bookmarks), the full-text and embeddings index, per-document
 semantic judgements, privacy rules about what may leave the machine, multi-stream UI, auth.
 

@@ -2,7 +2,7 @@
 // renders a substream as a time-ordered stream and listens for live events.
 
 const $ = id => document.getElementById(id);
-const ICON = { email: '✉', note: '📝', turn: '💬', file: '📄', bookmark: '🔖', summary: '✦', reminder: '⏰', todo: '☐', wakeup: '⏱', expense: '🧾', photo: '🖼' };
+import { TYPE_ICON as ICON, mountViewer, isTextFile } from './formats.js';
 
 const S = {
   cur: localGet('cur') || 'all', subs: [], docs: [], chain: [], titles: new Map(),
@@ -113,11 +113,13 @@ function renderStream(anim) {
   if (sv.dataset.view !== S.view) {          // switching views: rebuild from scratch
     sv.dataset.view = S.view;
     sv.className = 'stream v-' + S.view;
+    S.atlas?.destroy(); S.atlas = null;
     sv.innerHTML = '';
     S.stackEls.clear();
   }
   if (S.view === 'stack') renderStack(anim);
   else if (S.view === 'river') renderRiver(anim);
+  else if (S.view === 'atlas') renderAtlas(anim);
   else renderFeed(anim);
   drawMini();
 }
@@ -171,11 +173,43 @@ function card(d, age = '') {
   const who = agent ? `<span class="badge">✦ ${esc(d.author.replace('agent:', ''))}</span> · ` : d.author === 'me' ? '' : esc(d.author) + ' · ';
   return `<div class="${cls}" data-id="${d.id}">
     <div class="ic">${ICON[d.type] || '•'}</div>
-    <div style="min-width:0"><div class="t">${esc(d.title)}${d.unread ? '<span class="dot"></span>' : ''}</div><div class="s">${who}${esc(d.snippet)}</div></div>
+    <div style="min-width:0"><div class="t">${d.file ? `<span class="ext">${esc(d.file.ext)}</span>` : ''}${esc(d.title)}${d.unread ? '<span class="dot"></span>' : ''}</div><div class="s">${who}${esc(d.snippet)}</div></div>
     <div class="m">${fmtTime(d.created)}${d.frozen ? '<br>🔒' : ''}</div></div>`;
 }
 
+// Atlas: the GPU view (web/atlas.js, loaded on first use).
+let atlasLoading = false;
+async function renderAtlas(anim) {
+  const sv = $('stream');
+  if (!$('atlas')) sv.innerHTML = '<div class="focus-label atlas-label"></div><div class="atlas" id="atlas"></div>';
+  sv.querySelector('.atlas-label').innerHTML = focusLabel();
+  if (S.atlas) return S.atlas.update(S.docs, { sel: S.sel, anim });
+  if (atlasLoading) return;
+  atlasLoading = true;
+  const el = $('atlas');
+  try {
+    const { createAtlas } = await import('./atlas.js');
+    if (S.view !== 'atlas' || $('atlas') !== el) return;
+    S.atlas = createAtlas(el, {
+      dark: isDark, now: liveNow,
+      onHover: d => glance(d),
+      onOpen: d => openDoc(d.id),
+      onView: () => { if (!miniQueued) { miniQueued = true; setTimeout(() => { miniQueued = false; drawMini(); }, 120); } },
+    });
+    S.atlas.update(S.docs, { sel: S.sel });
+    S.atlas.home();
+  } catch (e) {
+    el.innerHTML = `<div class="empty">The Atlas needs WebGL: ${esc(e.message)}</div>`;
+  } finally { atlasLoading = false; }
+}
+let miniQueued = false;
+function isDark() {
+  const t = document.documentElement.dataset.theme;
+  return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
 function scrollToNow() {
+  if (S.view === 'atlas') { S.atlas?.home(); return; }
   if (S.view === 'stack') { S.atHead = true; S.cursor = null; renderStack(); drawMini(); return; }
   if (S.view === 'river') { const n = $('nowcol'), r = $('river'); if (n && r) r.scrollLeft = Math.max(0, n.offsetLeft - r.clientWidth * 0.6); drawMini(); return; }
   const n = $('nowline');
@@ -184,6 +218,7 @@ function scrollToNow() {
 
 // Bring a document into view in whichever view is showing.
 function reveal(id) {
+  if (S.view === 'atlas') { S.atlas?.reveal(id); return; }
   if (S.view === 'stack') { if (S.docs.some(d => d.id === id)) { S.cursor = id; S.atHead = false; renderStack(); drawMini(); } return; }
   document.querySelector(`.card[data-id="${id}"]`)?.scrollIntoView({ block: 'center', inline: 'center' });
 }
@@ -339,6 +374,7 @@ function glance(d) {
 
 async function openDoc(id, { scroll } = {}) {
   S.sel = id; S.editing = false;
+  S.atlas?.select(id);
   document.querySelectorAll('.card.sel').forEach(c => c.classList.remove('sel'));
   const el = document.querySelector(`.card[data-id="${id}"]`);
   el?.classList.add('sel');
@@ -372,10 +408,12 @@ created  ${fmtFull(d.created)}${isFut(d) ? '  (future — arrives then)' : ''}
 author   ${esc(d.author)}${d.from ? `\nfrom     ${esc(d.from)}` : ''}${d.to ? `\nto       ${esc(d.to)}` : ''}
 frozen   ${d.frozen ? 'yes 🔒' : 'no'}
 file     ${esc(d.path)}</div>
-    <div class="body">${md(d.body) || '<p class="hint">(empty)</p>'}</div>
+    ${d.file ? '<div class="viewer" id="viewer"></div>' : ''}
+    ${d.file && isTextFile(d) ? '' : `<div class="body">${md(d.body) || (d.file ? '' : '<p class="hint">(empty)</p>')}</div>`}
     <h4>In substreams</h4><div class="rel">${d.substreams.map(s => `<a data-sub="${s.id}">${esc(s.label)}</a>`).join(' · ') || '—'}</div>
     <h4>Provenance</h4><div class="rel">${d.author.startsWith('agent:') ? `Written by <b>${esc(d.author.slice(6))}</b>.<br>` : ''}${d.derived.length ? 'Derived from:' + rel(d.derived) : 'Original document.'}</div>
     ${d.children.length ? `<h4>Derived since</h4><div class="rel">${rel(d.children)}</div>` : ''}`;
+  if (d.file) mountViewer($('viewer'), d);
   $('pane').querySelector('.tools').onclick = e => {
     const act = e.target.dataset.act;
     if (act === 'edit') editDoc(d);
@@ -412,6 +450,7 @@ function compose(defaults = {}) {
       <label>Title (optional)<input name="title"></label>
       <label>Body<textarea name="body" style="min-height:160px"></textarea></label>
       <label>Arrives (leave empty for now; a future time makes it a reminder)<input type="datetime-local" name="at"></label>
+      <label>…or add files — any format (you can also drop files anywhere)<input type="file" name="files" multiple></label>
       <div class="tools"><button class="op primary small">Add to stream</button><button type="button" class="op small" id="cancel">Cancel</button></div>
     </form>`;
   $('cancel').onclick = () => { S.editing = false; placeholder(); };
@@ -419,6 +458,8 @@ function compose(defaults = {}) {
   $('cmp').onsubmit = async e => {
     e.preventDefault();
     const f = new FormData(e.target);
+    const files = [...e.target.files.files];
+    if (files.length && !f.get('body').trim()) { S.editing = false; return uploadFiles(files); }
     const at = f.get('at') ? new Date(f.get('at')).toISOString() : undefined;
     try {
       const d = await api('POST', '/docs', { type: f.get('type'), title: f.get('title'), body: f.get('body'), at });
@@ -529,6 +570,7 @@ function drawMini() {
 // Times of the documents currently "in view", for the minimap bracket.
 function visibleTimes() {
   const byId = id => S.docs.find(d => d.id === id)?.created;
+  if (S.view === 'atlas') return S.atlas?.visibleTimes() || [];
   if (S.view === 'stack') {
     const asc = stackOrder(), i = asc.findIndex(d => d.id === S.cursor);
     return i < 0 ? [] : asc.slice(Math.max(0, i - 12), i + 1).map(d => d.created);
@@ -549,6 +591,7 @@ function scrubTo(clientY) {
   const { t0, span, H } = mapGeom;
   const f = 1 - (clientY - $('mini').getBoundingClientRect().top - 8) / (H - 16);
   const t = t0 + Math.min(1, Math.max(0, f)) * span;
+  if (S.view === 'atlas') return S.atlas?.scrubTo(t);
   if (S.view === 'stack') {
     const asc = stackOrder();
     let bi = 0;
@@ -649,7 +692,8 @@ document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); $('q').focus(); return; }
   if (e.target.closest('input, textarea, select')) return;
   if (e.key === 'n') { e.preventDefault(); compose(); }
-  if (['1', '2', '3'].includes(e.key)) return setView(['feed', 'stack', 'river'][e.key - 1]);
+  if (S.view === 'atlas' && e.key !== 'Escape') return;   // the Atlas handles its own keys
+  if (['1', '2', '3', '4'].includes(e.key)) return setView(['feed', 'stack', 'river', 'atlas'][e.key - 1]);
   if (S.view === 'stack' && ['ArrowUp', 'ArrowDown', 'j', 'k', 'Enter'].includes(e.key)) {
     e.preventDefault();
     if (e.key === 'Enter') return S.cursor && openDoc(S.cursor);
@@ -661,11 +705,36 @@ document.addEventListener('keydown', e => {
     const next = cards[Math.max(0, Math.min(cards.length - 1, i < 0 ? cards.findIndex(c => !c.classList.contains('future')) : i + (e.key === 'j' ? 1 : -1)))];
     if (next) openDoc(next.dataset.id, { scroll: true });
   }
-  if (e.key === 'Escape') { S.sel = null; S.editing = false; placeholder(); $('pane').classList.remove('show'); }
+  if (e.key === 'Escape') { S.sel = null; S.editing = false; placeholder(); S.atlas?.select(null); $('pane').classList.remove('show'); }
 });
 
 setInterval(() => { $('clock').textContent = new Date(liveNow()).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }, 1000);
 setInterval(() => renderStream(), 60000);   // keep the Now line honest
+
+// ---------- files: drop anything onto the page to add it to the stream ----------
+async function uploadFiles(files) {
+  let last = null;
+  for (const f of files) {
+    try {
+      const res = await fetch('/api/upload?name=' + encodeURIComponent(f.name), { method: 'POST', body: f });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || res.statusText);
+      last = d;
+      toast(`Added ${f.name}`);
+    } catch (e) { toast(`${f.name}: ${e.message}`); }
+  }
+  if (last) { await loadStream({ id: last.id, kind: 'slide' }); openDoc(last.id, { scroll: true }); }
+}
+let dragDepth = 0;
+const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+addEventListener('dragenter', e => { if (hasFiles(e)) { dragDepth++; document.body.classList.add('dropping'); } });
+addEventListener('dragleave', e => { if (hasFiles(e) && --dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dropping'); } });
+addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+addEventListener('drop', e => {
+  if (!e.dataTransfer?.files?.length) return;
+  e.preventDefault(); dragDepth = 0; document.body.classList.remove('dropping');
+  uploadFiles([...e.dataTransfer.files]);
+});
 
 // ---------- helpers ----------
 function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }

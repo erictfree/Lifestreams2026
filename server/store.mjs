@@ -2,6 +2,7 @@
 // .index/ is derived and can be rebuilt by restarting.
 //
 //   <root>/stream/YYYY/MM/DD/<id>.md     documents (future-dated ones included)
+//   <root>/stream/YYYY/MM/DD/<id>.pdf    …and any file they carry (pdf, png, wav, csv, ics, eml…)
 //   <root>/substreams/<id>.yaml          persistent substreams
 //   <root>/agents/<name>.md              agents: frontmatter config + instructions
 //   <root>/summarizers/<name>.md         summarizers: test query + prompt
@@ -12,8 +13,9 @@ import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { parse, serialize } from './docfile.mjs';
 import { compile } from './query.mjs';
+import { MIME, typeFor, extract, isText } from './formats.mjs';
 
-const DOC_ATTRS = ['id', 'created', 'type', 'author', 'title', 'frozen', 'derived_from', 'from', 'to', 'mime'];
+const DOC_ATTRS = ['id', 'created', 'type', 'author', 'title', 'frozen', 'derived_from', 'from', 'to', 'file'];
 
 export class Store extends EventEmitter {
   constructor(root) {
@@ -34,7 +36,11 @@ export class Store extends EventEmitter {
 
   load() {
     for (const d of ['stream', 'substreams', 'agents', 'summarizers', '.index']) fs.mkdirSync(this.dir(d), { recursive: true });
-    for (const file of walk(this.dir('stream'))) if (file.endsWith('.md')) this.loadDoc(file);
+    const files = [...walk(this.dir('stream'))].filter(f => !path.basename(f).startsWith('.'));
+    const mds = new Set(files.filter(f => f.endsWith('.md')));
+    for (const f of mds) this.loadDoc(f);
+    // A file dropped in with no sidecar becomes a document of its own.
+    for (const f of files) if (!mds.has(f) && !mds.has(f.replace(/\.[^./]+$/, '.md'))) this.importLoose(f);
     for (const f of fs.readdirSync(this.dir('substreams'))) {
       if (!f.endsWith('.yaml')) continue;
       const { attrs } = parse('---\n' + fs.readFileSync(this.dir('substreams', f), 'utf8') + '\n---\n');
@@ -56,7 +62,8 @@ export class Store extends EventEmitter {
     const doc = {
       id, created, type: attrs.type || 'note', author: attrs.author || 'me', title: attrs.title || '',
       frozen: !!attrs.frozen, derived_from: attrs.derived_from || [], from: attrs.from || null, to: attrs.to || null,
-      mime: attrs.mime, body, path: file, mtime: fs.statSync(file).mtimeMs,
+      file: attrs.file || null, body, path: file, mtime: fs.statSync(file).mtimeMs,
+      attachment: findAttachment(file),
     };
     const existed = this.docs.has(id);
     this.docs.set(id, doc);
@@ -69,11 +76,16 @@ export class Store extends EventEmitter {
     let timer, pending = new Set();
     try {
       fs.watch(this.dir('stream'), { recursive: true }, (_ev, rel) => {
-        if (!rel || !rel.endsWith('.md')) return;
+        if (!rel || path.basename(rel).startsWith('.')) return;
         pending.add(path.join(this.dir('stream'), rel));
         clearTimeout(timer);
         timer = setTimeout(() => {
           for (const file of pending) {
+            if (!file.endsWith('.md')) {             // a non-markdown file: new loose file, or an attachment
+              if (this.ownWrites.delete(file) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
+              if (!fs.existsSync(file.replace(/\.[^./]+$/, '.md'))) this.importLoose(file);
+              continue;
+            }
             if (!fs.existsSync(file)) {          // deleted outside the app: drop it from the stream
               this.ownWrites.delete(file);
               const gone = [...this.docs.values()].find(d => d.path === file);
@@ -114,6 +126,46 @@ export class Store extends EventEmitter {
     if (author === 'me') this.markRead(id);
     this.emit('append', doc);
     return doc;
+  }
+
+  // Bring a file's bytes into the stream: the file is stored next to a markdown sidecar
+  // that holds its attributes and any text we could extract (so find sees inside it).
+  importFile(buf, name, { created, author, type, title, body, frozen = false, derived_from = [] } = {}) {
+    const ext = (path.extname(name).slice(1) || 'bin').toLowerCase();
+    const x = extract(ext, buf, name);
+    const t = created ?? x.created ?? x.at ?? this.now();
+    const id = this.newId(t);
+    const d = new Date(t);
+    const dir = this.dir('stream', String(d.getUTCFullYear()), pad(d.getUTCMonth() + 1), pad(d.getUTCDate()));
+    fs.mkdirSync(dir, { recursive: true });
+    const att = path.join(dir, `${id}.${ext}`);
+    this.ownWrites.add(att);
+    fs.writeFileSync(att, buf);
+    const doc = {
+      id, created: t, type: type || typeFor(ext), author: author || x.author || 'me', title: title || x.title,
+      frozen, derived_from, from: null, to: null, file: name,
+      // a description plus the file's own text
+      body: body != null && x.body && !isText(ext) ? `${body}\n\n${x.body}` : body ?? x.body, path: path.join(dir, id + '.md'), mtime: Date.now(),
+      attachment: { path: att, ext, mime: MIME[ext] || 'application/octet-stream', size: buf.length },
+    };
+    this.writeDoc(doc);
+    this.docs.set(id, doc);
+    this.sorted = null;
+    if (doc.author === 'me') this.markRead(id);
+    this.emit('append', doc);
+    return doc;
+  }
+
+  // A file that appeared in stream/ without a sidecar (copied in by hand, a download, a
+  // scanner…). It moves to its place in time — dated by the file's own timestamps.
+  importLoose(file) {
+    try {
+      const st = fs.statSync(file);
+      if (!st.isFile()) return null;
+      const doc = this.importFile(fs.readFileSync(file), path.basename(file), { created: Math.min(st.birthtimeMs || st.mtimeMs, st.mtimeMs) });
+      fs.rmSync(file);
+      return doc;
+    } catch (e) { console.warn('could not import', file, e.message); return null; }
   }
 
   update(id, patch) {
@@ -264,9 +316,19 @@ export function header(store, d, withBody = false) {
   return {
     id: d.id, created: d.created, type: d.type, author: d.author, title: d.title || firstLine(d.body),
     frozen: d.frozen, unread: store.isUnread(d), derived_from: d.derived_from, from: d.from, to: d.to,
+    file: d.attachment ? { name: d.file || path.basename(d.attachment.path), ext: d.attachment.ext, mime: d.attachment.mime, size: d.attachment.size } : null,
     snippet: d.body.replace(/[*_`#>]+|\[([0-9]{8}T[0-9]{6}Z-[a-z0-9]+)\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 220),
     ...(withBody ? { body: d.body, path: path.relative(store.root, d.path) } : {}),
   };
+}
+
+function findAttachment(mdPath) {
+  const dir = path.dirname(mdPath), base = path.basename(mdPath, '.md') + '.';
+  let f;
+  try { f = fs.readdirSync(dir).find(n => n.startsWith(base) && !n.endsWith('.md')); } catch { return null; }
+  if (!f) return null;
+  const ext = f.slice(base.length).toLowerCase(), p = path.join(dir, f);
+  return { path: p, ext, mime: MIME[ext] || 'application/octet-stream', size: fs.statSync(p).size };
 }
 
 export function firstLine(s) { return (s || '').split('\n').find(l => l.trim())?.replace(/^#+\s*/, '').slice(0, 90) || '(untitled)'; }

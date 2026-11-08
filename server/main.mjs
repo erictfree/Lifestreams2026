@@ -15,6 +15,11 @@ import { looksLikeQuestion } from './query.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.join(here, '..', 'web');
+// Third-party browser modules, served from node_modules so the app works offline.
+const VENDOR = {
+  three: path.join(here, '..', 'node_modules', 'three', 'build'),
+  pdfjs: path.join(here, '..', 'node_modules', 'pdfjs-dist', 'build'),
+};
 const ROOT = process.env.LIFESTREAM_DIR || path.join(here, '..', 'lifestreams', 'me');
 const PORT = Number(process.env.PORT || 4747);
 
@@ -65,6 +70,22 @@ route('POST', '/api/docs', ({ body }) => header(store, store.append({
   type: body.type || 'note', title: body.title || '', body: body.body || '', created: body.at || undefined, author: 'me',
 }), true));
 route('PUT', '/api/docs/:id', ({ p, body }) => header(store, store.update(p.id, body), true));
+route('GET', '/api/files/:id', ({ p, res }) => {
+  const d = store.get(p.id);
+  if (!d?.attachment || !fs.existsSync(d.attachment.path)) throw httpError(404, 'no file');
+  res.writeHead(200, { 'content-type': d.attachment.mime, 'content-length': fs.statSync(d.attachment.path).size,
+    'content-disposition': `inline; filename="${encodeURIComponent(d.file || path.basename(d.attachment.path))}"`, 'cache-control': 'max-age=3600' });
+  fs.createReadStream(d.attachment.path).pipe(res);
+  return RAW;
+});
+route('POST', '/api/upload', async ({ q, req }) => {
+  const name = q.get('name');
+  if (!name) throw httpError(400, 'upload needs ?name=');
+  const chunks = [];
+  let n = 0;
+  for await (const c of req) { n += c.length; if (n > 200e6) throw httpError(413, 'file too large'); chunks.push(c); }
+  return header(store, store.importFile(Buffer.concat(chunks), path.basename(name)), true);
+});
 route('POST', '/api/docs/:id/read', ({ p }) => { store.markRead(p.id); return { ok: true }; });
 route('POST', '/api/docs/:id/freeze', ({ p }) => header(store, store.freeze(p.id), true));
 route('POST', '/api/docs/:id/clone', ({ p }) => header(store, harness.clone(p.id), true));
@@ -97,7 +118,8 @@ route('POST', '/api/classify', ({ body }) => ({ question: looksLikeQuestion(Stri
 route('GET', '/api/agents', () => harness.agents());
 
 // ---- server ----
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json' };
+const RAW = Symbol('raw response');
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.mjs': 'text/javascript', '.map': 'application/json', '.wasm': 'application/wasm' };
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
@@ -113,12 +135,16 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/')) {
       const r = routes.find(r => r.method === req.method && r.re.test(url.pathname));
       if (!r) throw httpError(404, 'not found');
-      const body = ['POST', 'PUT', 'PATCH'].includes(req.method) ? await readBody(req) : {};
-      const out = await r.fn({ p: url.pathname.match(r.re).groups || {}, q: url.searchParams, body });
+      const raw = url.pathname === '/api/upload';
+      const body = !raw && ['POST', 'PUT', 'PATCH'].includes(req.method) ? await readBody(req) : {};
+      const out = await r.fn({ p: url.pathname.match(r.re).groups || {}, q: url.searchParams, body, req, res });
+      if (out === RAW) return;
       return send(res, 200, out);
     }
-    const file = path.join(WEB, url.pathname === '/' ? 'index.html' : path.normalize(url.pathname));
-    if (!file.startsWith(WEB) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) throw httpError(404, 'not found');
+    const vm = url.pathname.match(/^\/vendor\/(\w+)\/(.+)$/);
+    const base = vm ? VENDOR[vm[1]] : WEB;
+    const file = vm ? (base && path.join(base, path.normalize(vm[2]))) : path.join(WEB, url.pathname === '/' ? 'index.html' : path.normalize(url.pathname));
+    if (!base || !file.startsWith(base) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) throw httpError(404, 'not found');
     res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' });
     fs.createReadStream(file).pipe(res);
   } catch (e) {

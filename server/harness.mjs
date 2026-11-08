@@ -4,6 +4,7 @@
 
 import { EventEmitter } from 'node:events';
 import path from 'node:path';
+import fs from 'node:fs';
 import * as llm from './llm.mjs';
 import { header, firstLine, httpError } from './store.mjs';
 import { words, semanticPhrases } from './query.mjs';
@@ -92,6 +93,7 @@ export class Harness extends EventEmitter {
   clone(id, author = 'me', body) {
     const src = this.store.get(id);
     if (!src) throw httpError(404, 'no such document');
+    if (src.attachment) return this.store.importFile(fs.readFileSync(src.attachment.path), src.file || path.basename(src.attachment.path), { type: src.type, title: src.title, body: body ?? src.body, author, derived_from: [src.id] });
     return this.store.append({ type: src.type, title: src.title, body: body ?? src.body, author, derived_from: [src.id] });
   }
 
@@ -101,7 +103,9 @@ export class Harness extends EventEmitter {
     this.store.freeze(id);
     const other = this.store.sibling(to);
     const me = path.basename(this.store.root);
-    other.append({ type: src.type, title: src.title, body: src.body, author: src.author === 'me' ? me : src.author, from: me, to, frozen: true, derived_from: [src.id] });
+    const attrs = { type: src.type, title: src.title, body: src.body, author: src.author === 'me' ? me : src.author, frozen: true, derived_from: [src.id] };
+    if (src.attachment) other.importFile(fs.readFileSync(src.attachment.path), src.file || path.basename(src.attachment.path), { ...attrs, created: other.now() });
+    else other.append({ ...attrs, from: me, to });
     return `transferred a frozen copy of ${id} to ${to}'s lifestream`;
   }
 
