@@ -22,7 +22,7 @@ npm start
 
 Then open http://localhost:4747.
 
-Five views of the same stream, switched in the header or with keys `1`–`5`:
+Six views of the same stream, switched in the header or with keys `1`–`6`:
 
 - **Feed**: vertical, newest first, with future documents above the Now line.
 - **Stack**: the 1997 interface rebuilt with CSS 3D. Pages recede into the past, unread
@@ -43,6 +43,13 @@ Five views of the same stream, switched in the header or with keys `1`–`5`:
   thin vertical strip at a time, with distance fog and a glossy floor reflection. Days and
   months are painted on the floor, and the future lies behind you past the NOW gate.
   Scroll, drag, or press ↑/↓ to walk; click a document to walk up to it and open it.
+- **Vista**: the 1997 diagonal, made legible. Each day is a row of documents on a tilted
+  plane, ordered through the day from left to right. Today's row is in front, and each
+  older day sits one step further back and to the right, so the past recedes diagonally.
+  The cards lean back like pages on a drafting table, texture-mapped as perspective quads
+  in plain Canvas 2D, so you can read them and they don't hide the rows behind. Scroll or
+  press ↑/↓ to glide from day to day and ←/→ to move along a day. Future days fade in
+  front of the Now line.
 
 ## Real files, any format
 
@@ -109,5 +116,5 @@ documents arrive (and wake agents) when their time comes.
 - `server/`: `store.mjs` (files ↔ memory), `query.mjs` (find language), `harness.mjs`
   (tools, ask, summarize, agents, clock), `llm.mjs` (Anthropic SDK), `main.mjs` (HTTP + SSE)
 - `web/`: the browser client. `formats.js` holds the per-format viewers and thumbnails, and
-  `atlas.js` is the GPU view, and `hall.js` is the pseudo-3D corridor.
+  `atlas.js` is the GPU view, `hall.js` is the pseudo-3D corridor, and `vista.js` is the diagonal view.
 - `prototype/index.html`: the original static mockup

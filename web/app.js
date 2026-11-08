@@ -182,6 +182,7 @@ function card(d, age = '') {
 const GFX = {
   atlas: { module: './atlas.js', create: 'createAtlas', fail: 'The Atlas needs WebGL' },
   hall: { module: './hall.js', create: 'createHall', fail: 'The Hall couldn’t start' },
+  vista: { module: './vista.js', create: 'createVista', fail: 'The Vista couldn’t start' },
 };
 let gfxLoading = null;
 async function renderGfx(anim) {
@@ -697,7 +698,7 @@ document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); $('q').focus(); return; }
   if (e.target.closest('input, textarea, select')) return;
   if (e.key === 'n') { e.preventDefault(); compose(); }
-  if (['1', '2', '3', '4', '5'].includes(e.key)) return setView(['feed', 'stack', 'river', 'atlas', 'hall'][e.key - 1]);
+  if (['1', '2', '3', '4', '5', '6'].includes(e.key)) return setView(['feed', 'stack', 'river', 'atlas', 'hall', 'vista'][e.key - 1]);
   if (GFX[S.view] && e.key !== 'Escape') return;   // canvas views handle their own keys
   if (S.view === 'stack' && ['ArrowUp', 'ArrowDown', 'j', 'k', 'Enter'].includes(e.key)) {
     e.preventDefault();

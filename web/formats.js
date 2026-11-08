@@ -24,7 +24,18 @@ let pdfjs;
 export function pdfLib() {
   return pdfjs ??= import('/vendor/pdfjs/pdf.min.mjs').then(m => { m.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.min.mjs'; return m; });
 }
-export const loadPdf = d => once('p:' + d.id, async () => (await pdfLib()).getDocument({ url: fileUrl(d) }).promise);
+// Point pdf.js at its own font, character-map and decoder data. Without these it waits on
+// a timeout (~1 s per document) for the 14 standard fonts that most PDFs don't embed.
+const PDF_DATA = '/vendor/pdfjsdata/';
+// One worker for every PDF: by default each getDocument() boots its own (~1 s each).
+let pdfWorker;
+export const loadPdf = d => once('p:' + d.id, async () => {
+  const lib = await pdfLib();
+  pdfWorker ??= new lib.PDFWorker({ name: 'lifestreams-pdf' });
+  return lib.getDocument({ worker: pdfWorker,
+  url: fileUrl(d), standardFontDataUrl: PDF_DATA + 'standard_fonts/', cMapUrl: PDF_DATA + 'cmaps/', cMapPacked: true, wasmUrl: PDF_DATA + 'wasm/',
+  }).promise;
+});
 let actx;
 export const loadPeaks = d => once('a:' + d.id, async () => {
   actx ??= new (window.AudioContext || window.webkitAudioContext)();

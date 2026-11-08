@@ -19,6 +19,7 @@ const WEB = path.join(here, '..', 'web');
 const VENDOR = {
   three: path.join(here, '..', 'node_modules', 'three', 'build'),
   pdfjs: path.join(here, '..', 'node_modules', 'pdfjs-dist', 'build'),
+  pdfjsdata: path.join(here, '..', 'node_modules', 'pdfjs-dist'),   // standard_fonts/, cmaps/, wasm/
 };
 const ROOT = process.env.LIFESTREAM_DIR || path.join(here, '..', 'lifestreams', 'me');
 const PORT = Number(process.env.PORT || 4747);

@@ -211,10 +211,11 @@ footer .status { margin-left: auto; color: var(--muted); font-size: 12px; }
 }
 
 /* ---------- atlas view: the GPU wall ---------- */
-.stream.v-atlas, .stream.v-hall { overflow: hidden; padding: 0; position: relative; }
+.stream.v-atlas, .stream.v-hall, .stream.v-vista { overflow: hidden; padding: 0; position: relative; }
 .gfx-label, .atlas-label { position: absolute; top: 0; left: 0; right: 0; padding: 12px 24px; z-index: 5; pointer-events: none; background: linear-gradient(var(--bg) 40%, transparent); }
 .gfx { position: absolute; inset: 0; cursor: grab; touch-action: none; }
 .gfx.hall { cursor: ns-resize; }
+.gfx.vista { cursor: grab; }
 .gfx.atlas:active { cursor: grabbing; }
 .atlas-gl { display: block; width: 100%; height: 100%; }
 .atlas-hud { position: absolute; inset: 0; pointer-events: none; font-size: 12px; }
@@ -283,3 +284,16 @@ body.dropping::after { content: 'Drop to add to your lifestream — any format';
 .h-help { bottom: 12px; left: 50%; transform: translateX(-50%); color: var(--muted); font-size: 11px; white-space: nowrap; background: color-mix(in srgb, var(--panel) 80%, transparent); backdrop-filter: blur(8px); padding: 3px 10px; border-radius: 8px; border: 1px solid var(--line); }
 .h-help kbd { border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
 @media (max-width: 860px) { .h-help { display: none; } .h-when { top: 62px; left: 16px; } .h-day { font-size: 16px; } .h-buttons { top: auto; bottom: 12px; right: 12px; } }
+
+/* ---------- vista view: days on a diagonal ---------- */
+.vista-cv { display: block; width: 100%; height: 100%; }
+.vista-hud { position: absolute; inset: 0; pointer-events: none; }
+.vista-hud > * { position: absolute; }
+.v-when { top: 36px; left: 24px; text-shadow: 0 0 14px var(--bg), 0 0 4px var(--bg); }
+.v-day { font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+.v-rel { color: var(--muted); font-size: 13px; }
+.v-buttons { top: 40px; right: 16px; display: flex; gap: 6px; pointer-events: auto; }
+.v-buttons .op { background: color-mix(in srgb, var(--panel) 85%, transparent); backdrop-filter: blur(8px); }
+.v-help { bottom: 12px; left: 50%; transform: translateX(-50%); color: var(--muted); font-size: 11px; white-space: nowrap; background: color-mix(in srgb, var(--panel) 80%, transparent); backdrop-filter: blur(8px); padding: 3px 10px; border-radius: 8px; border: 1px solid var(--line); }
+.v-help kbd { border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+@media (max-width: 860px) { .v-help { display: none; } .v-when { top: 62px; left: 16px; } .v-day { font-size: 16px; } .v-buttons { top: auto; bottom: 12px; right: 12px; } .views button { padding: 5px 5px; font-size: 11px; } }

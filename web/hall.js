@@ -296,6 +296,11 @@ export function createHall(el, cb) {
       const t = thumbs.get(it.doc.id);
       if ((!t || t.scale < scale) && !pending.has(it.doc.id)) { it.wantScale = scale; pending.add(it.doc.id); }
     }
+    pump();
+  }
+  // Each finished render starts the next directly (not on the next frame), so thumbnails
+  // keep loading even when animation frames are throttled.
+  function pump() {
     while (inflight < THUMB_CONCURRENCY && pending.size) {
       // nearest pending first
       const id = [...pending].sort((a, b) => depth(byId.get(a)?.z ?? 1e9) - depth(byId.get(b)?.z ?? 1e9))[0];
@@ -315,7 +320,7 @@ export function createHall(el, cb) {
           }
         })
         .catch(() => {})
-        .finally(() => { inflight--; request(); });
+        .finally(() => { inflight--; pump(); request(); });
     }
   }
 
