@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lifestreams</title>
 <link rel="stylesheet" href="app.css">
+<!-- three.js addons import the bare specifier "three"; map it to the same copy Atlas uses -->
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/threeaddons/" } }</script>
 </head>
 <body>
 <div class="app">
@@ -25,11 +27,12 @@
       <button data-view="hall" title="Hall — walk a pseudo-3D gallery corridor through time (5)">Hall</button>
       <button data-view="vista" title="Vista — days receding along a diagonal, documents standing in rows (6)">Vista</button>
       <button data-view="classic" title="Classic — the 1997 diagonal stack, glance and time slider (7)">Classic</button>
+      <button data-view="modern" title="Modern — the same stack on the GPU: depth of field, soft shadows, springs (9)">Modern</button>
       <button data-view="calendar" title="Calendar — month grid with the day's agenda (8)">Calendar</button>
     </div>
     <select id="viewSelect" class="view-select" aria-label="View">
       <option value="feed">Feed</option><option value="stack">Stack</option><option value="river">River</option><option value="atlas">Atlas</option>
-      <option value="hall">Hall</option><option value="vista">Vista</option><option value="classic">Classic</option><option value="calendar">Calendar</option>
+      <option value="hall">Hall</option><option value="vista">Vista</option><option value="classic">Classic</option><option value="modern">Modern</option><option value="calendar">Calendar</option>
     </select>
     <span class="pill" id="llm" title="">model</span>
     <span class="clock" id="clock"></span>

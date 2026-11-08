@@ -186,6 +186,7 @@ const GFX = {
   vista: { module: './vista.js', create: 'createVista', fail: 'The Vista couldn’t start' },
   classic: { module: './classic.js', create: 'createClassic', fail: 'The Classic view couldn’t start' },
   calendar: { module: './calendar.js', create: 'createCalendar', fail: 'The Calendar couldn’t start' },
+  modern: { module: './modern.js', create: 'createModern', fail: 'The Modern view needs WebGL' },
 };
 let gfxLoading = null;
 async function renderGfx(anim) {
@@ -705,8 +706,8 @@ document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); $('q').focus(); return; }
   if (e.target.closest('input, textarea, select')) return;
   if (e.key === 'n') { e.preventDefault(); compose(); }
-  const VIEWS = ['feed', 'stack', 'river', 'atlas', 'hall', 'vista', 'classic', 'calendar'];
-  if (/^[1-8]$/.test(e.key)) return setView(VIEWS[e.key - 1]);
+  const VIEWS = ['feed', 'stack', 'river', 'atlas', 'hall', 'vista', 'classic', 'calendar', 'modern'];
+  if (/^[1-9]$/.test(e.key)) return setView(VIEWS[e.key - 1]);
   if (GFX[S.view] && e.key !== 'Escape') return;   // canvas views handle their own keys
   if (S.view === 'stack' && ['ArrowUp', 'ArrowDown', 'j', 'k', 'Enter'].includes(e.key)) {
     e.preventDefault();

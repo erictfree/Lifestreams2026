@@ -22,7 +22,7 @@ npm start
 
 Then open http://localhost:4747.
 
-Eight views of the same stream, switched in the header (a dropdown on narrow screens) or with keys `1`–`8`:
+Nine views of the same stream, switched in the header (a dropdown on narrow screens) or with keys `1`–`9`:
 
 - **Feed**: vertical, newest first, with future documents above the Now line.
 - **Stack**: the 1997 interface rebuilt with CSS 3D. Pages recede into the past, unread
@@ -50,12 +50,26 @@ Eight views of the same stream, switched in the header (a dropdown on narrow scr
   in plain Canvas 2D, so you can read them and they don't hide the rows behind. Scroll or
   press ↑/↓ to glide from day to day and ←/→ to move along a day. Future days fade in
   front of the Now line.
-- **Classic**: the 1997 X Windows interface, kept faithful. A diagonal stack of 40 pages
-  runs corner to corner, newest at the bottom right, and each page's header line peeks out.
-  Hovering a page pops a large rendered copy out of the stack (the original "glance"). The
-  stream name and count sit above a time slider, with the visible slice's dates on top and
-  the whole stream's range below. Unread pages have red borders and writable ones thick
-  borders. Scroll, use the slider, or press ↑/↓ to move through time.
+- **Classic**: the 1997 X Windows interface, rebuilt as a polished modern version. Forty
+  letter-shaped pages recede in true perspective toward a vanishing point beyond the top
+  left. The newest page is large at the bottom right, and older pages shrink and fade as
+  they go back, each showing the header line that peeks out above the page in front.
+  Hovering a page grows its glance out of the stack. The stream name and size sit in the
+  open corner above a time slider whose track is the stream's own density histogram.
+  Unread pages have red edges, writable pages stronger ones, and future pages are dashed.
+  Scroll, swipe, use the slider, or press ↑/↓ to move through time.
+- **Modern** (`9`): the same receding diagonal as Classic, rebuilt as a spatial interface
+  on the GPU (three.js), set against a luminous mesh-gradient backdrop.
+  - Cards are content-first: a PDF card shows its actual first page, photos fill the card,
+    mail reads like an open message, and sheets, invites, code, and audio render as
+    themselves. A small frosted label sits at the bottom of each card.
+  - Soft key-light shadows fall from each card onto the ones behind it.
+  - Depth of field keeps what you're looking at sharp and blurs the rest of the stack.
+  - Every motion runs on spring physics, and the camera has subtle parallax.
+  - Hovering a card pulls it out of the stack toward you.
+  - The controls are liquid glass: a stream panel, a vertical tab bar that filters by kind
+    (Mail, Docs, Media, Time, Money) by fading the rest back, and a floating ornament with
+    the timeline, Now, and Upcoming.
 - **Calendar**: a traditional month grid over the same documents. Mail and notes fill the
   past; reminders, events, and agent wake-ups fill the future, shown with their times.
   Pick a day to see its agenda. Double-click a future day, or use "+ Reminder", to
@@ -126,5 +140,5 @@ documents arrive (and wake agents) when their time comes.
 - `server/`: `store.mjs` (files ↔ memory), `query.mjs` (find language), `harness.mjs`
   (tools, ask, summarize, agents, clock), `llm.mjs` (Anthropic SDK), `main.mjs` (HTTP + SSE)
 - `web/`: the browser client. `formats.js` holds the per-format viewers and thumbnails, and
-  `atlas.js` is the GPU view, `hall.js` is the pseudo-3D corridor, `vista.js` is the diagonal view, `classic.js` is the 1997 stack, and `calendar.js` is the month grid.
+  `atlas.js` is the GPU view, `hall.js` is the pseudo-3D corridor, `vista.js` is the diagonal view, `classic.js` is the 1997 stack, `modern.js` is its GPU counterpart, and `calendar.js` is the month grid.
 - `prototype/index.html`: the original static mockup

@@ -18,6 +18,7 @@ const WEB = path.join(here, '..', 'web');
 // Third-party browser modules, served from node_modules so the app works offline.
 const VENDOR = {
   three: path.join(here, '..', 'node_modules', 'three', 'build'),
+  threeaddons: path.join(here, '..', 'node_modules', 'three', 'examples', 'jsm'),
   pdfjs: path.join(here, '..', 'node_modules', 'pdfjs-dist', 'build'),
   pdfjsdata: path.join(here, '..', 'node_modules', 'pdfjs-dist'),   // standard_fonts/, cmaps/, wasm/
 };
