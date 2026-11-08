@@ -22,6 +22,16 @@ npm start
 
 Then open http://localhost:4747.
 
+Three views of the same stream, switched in the header or with keys `1` `2` `3`:
+
+- **Feed**: vertical, newest first, with future documents above the Now line.
+- **Stack**: the 1997 interface rebuilt with CSS 3D. Pages recede into the past, unread
+  pages have red borders and writable ones thick borders, as in the original. Scroll,
+  swipe, or press ↑/↓ to move through time, including past Now into the future. Click a
+  page behind the front to bring it forward.
+- **River**: days as columns flowing left to right, with the Now line between past and
+  future. The mouse wheel moves through time.
+
 `npm run seed` writes a sample lifestream (about 650 documents over 18 months, plus
 substreams, agents and summarizers) to `lifestreams/me/`. Run `npm run seed -- --force` to
 wipe and reseed it.

@@ -32,6 +32,7 @@ store.on('append', d => {
   if (d.created > store.now()) harness.tick(); else harness.dispatch(d);
 });
 store.on('update', d => broadcast({ type: 'update', doc: header(store, d) }));
+store.on('remove', d => broadcast({ type: 'remove', id: d.id }));
 store.on('substreams', () => broadcast({ type: 'substreams' }));
 harness.on('arrive', d => broadcast({ type: 'arrive', doc: header(store, d) }));
 harness.on('agent', a => broadcast({ type: 'agent', agent: a }));

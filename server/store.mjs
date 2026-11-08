@@ -74,8 +74,13 @@ export class Store extends EventEmitter {
         clearTimeout(timer);
         timer = setTimeout(() => {
           for (const file of pending) {
+            if (!fs.existsSync(file)) {          // deleted outside the app: drop it from the stream
+              this.ownWrites.delete(file);
+              const gone = [...this.docs.values()].find(d => d.path === file);
+              if (gone) { this.docs.delete(gone.id); this.sorted = null; this.emit('remove', gone); }
+              continue;
+            }
             if (this.ownWrites.delete(file)) continue;
-            if (!fs.existsSync(file)) continue;
             const r = this.loadDoc(file);
             if (r) this.emit(r.existed ? 'update' : 'append', r.doc);
           }
